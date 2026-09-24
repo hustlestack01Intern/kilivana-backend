@@ -93,7 +93,7 @@ public class SecurityConfig {
 
                     if (openApiEnabled) {
                         if (openApiPublic) {
-                            auth.requestMatchers("/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll();
+                            auth.requestMatchers("/", "/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll();
                         } else {
                             auth.requestMatchers("/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").hasRole("ADMIN");
                         }
