@@ -1,0 +1,6355 @@
+{
+ "openapi": "3.0.1",
+ "info": {
+  "title": "Backend system for the Kilivana App Platform",
+  "description": "Agricultural marketplace and logistics backend: auth, marketplace, orders, payments, logistics, inspections, badges, disputes and admin APIs under the /api/v1 base path.",
+  "version": "v1"
+ },
+ "servers": [
+  {
+   "url": "https://march-cacti-flashcard.ngrok-free.dev/api/v1",
+   "description": "Public tunnel (shared link)"
+  },
+  {
+   "url": "http://localhost:8080/api/v1",
+   "description": "Local dev (this Mac)"
+  }
+ ],
+ "paths": {
+  "/api/v1/users/me": {
+   "get": {
+    "tags": [
+     "user-controller"
+    ],
+    "operationId": "me",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/UserProfileResponse"
+        }
+       }
+      }
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "user-controller"
+    ],
+    "operationId": "updateMe",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UpdateUserProfileRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/UserProfileResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/products/{productId}": {
+   "get": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "getById_1",
+    "parameters": [
+     {
+      "name": "productId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/ProductResponse"
+        }
+       }
+      }
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "update",
+    "parameters": [
+     {
+      "name": "productId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UpdateProductRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/ProductResponse"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "unlist",
+    "parameters": [
+     {
+      "name": "productId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   }
+  },
+  "/api/v1/addresses/{addressId}": {
+   "put": {
+    "tags": [
+     "address-controller"
+    ],
+    "operationId": "update_1",
+    "parameters": [
+     {
+      "name": "addressId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreateAddressRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AddressResponse"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "address-controller"
+    ],
+    "operationId": "delete_1",
+    "parameters": [
+     {
+      "name": "addressId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   }
+  },
+  "/api/v1/webhooks/payments": {
+   "post": {
+    "tags": [
+     "payment-webhook-controller"
+    ],
+    "operationId": "handle",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PaymentWebhookRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   }
+  },
+  "/api/v1/site-visits": {
+   "get": {
+    "tags": [
+     "site-visit-controller"
+    ],
+    "operationId": "myVisits",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/SiteVisitResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "site-visit-controller"
+    ],
+    "operationId": "create",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreateSiteVisitRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/SiteVisitResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/site-visits/{visitId}/schedule": {
+   "post": {
+    "tags": [
+     "site-visit-controller"
+    ],
+    "operationId": "schedule",
+    "parameters": [
+     {
+      "name": "visitId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ScheduleSiteVisitRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/SiteVisitResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/site-visits/{visitId}/reject": {
+   "post": {
+    "tags": [
+     "site-visit-controller"
+    ],
+    "operationId": "reject",
+    "parameters": [
+     {
+      "name": "visitId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/SiteVisitResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/site-visits/{visitId}/complete": {
+   "post": {
+    "tags": [
+     "site-visit-controller"
+    ],
+    "operationId": "complete",
+    "parameters": [
+     {
+      "name": "visitId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/SiteVisitResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/products": {
+   "get": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "browse",
+    "parameters": [
+     {
+      "name": "sector",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "FARM_PRODUCE",
+        "AGRI_INPUTS"
+       ]
+      }
+     },
+     {
+      "name": "categoryId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     },
+     {
+      "name": "sellerId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     },
+     {
+      "name": "query",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ProductResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "create_1",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreateProductRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/ProductResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/products/{productId}/save": {
+   "post": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "save",
+    "parameters": [
+     {
+      "name": "productId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "unsave",
+    "parameters": [
+     {
+      "name": "productId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   }
+  },
+  "/api/v1/products/{productId}/images": {
+   "get": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "images",
+    "parameters": [
+     {
+      "name": "productId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ProductImageResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "registerImage",
+    "parameters": [
+     {
+      "name": "productId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RegisterProductImageRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/ProductImageResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments": {
+   "post": {
+    "tags": [
+     "payment-controller"
+    ],
+    "operationId": "create_2",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreatePaymentRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PaymentResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments/{paymentId}/refund": {
+   "post": {
+    "tags": [
+     "payment-controller"
+    ],
+    "operationId": "refund",
+    "parameters": [
+     {
+      "name": "paymentId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PaymentResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments/{paymentId}/fail": {
+   "post": {
+    "tags": [
+     "payment-controller"
+    ],
+    "operationId": "fail",
+    "parameters": [
+     {
+      "name": "paymentId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PaymentResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments/verify": {
+   "post": {
+    "tags": [
+     "payment-controller"
+    ],
+    "operationId": "verify",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VerifyPaymentRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PaymentResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orders": {
+   "post": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "create_3",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreateOrderRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/OrderResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orders/{orderId}/confirm-receipt": {
+   "post": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "confirmReceipt",
+    "parameters": [
+     {
+      "name": "orderId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/OrderResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orders/{orderId}/cancel": {
+   "post": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "cancel",
+    "parameters": [
+     {
+      "name": "orderId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/OrderResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/notifications/{notificationId}/read": {
+   "post": {
+    "tags": [
+     "notification-controller"
+    ],
+    "operationId": "markAsRead",
+    "parameters": [
+     {
+      "name": "notificationId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/NotificationResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/notifications/read-all": {
+   "post": {
+    "tags": [
+     "notification-controller"
+    ],
+    "operationId": "markAllRead",
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   }
+  },
+  "/api/v1/logistics/jobs": {
+   "post": {
+    "tags": [
+     "logistics-controller"
+    ],
+    "operationId": "create_4",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreateLogisticsJobRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/LogisticsJobResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/logistics/jobs/{jobId}/tracking": {
+   "get": {
+    "tags": [
+     "logistics-controller"
+    ],
+    "operationId": "trackingEvents",
+    "parameters": [
+     {
+      "name": "jobId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/TrackingEventResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "logistics-controller"
+    ],
+    "operationId": "track",
+    "parameters": [
+     {
+      "name": "jobId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TrackingEventRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/TrackingEventResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/logistics/jobs/{jobId}/proof-of-delivery": {
+   "post": {
+    "tags": [
+     "logistics-controller"
+    ],
+    "operationId": "submitProofOfDelivery",
+    "parameters": [
+     {
+      "name": "jobId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SubmitProofOfDeliveryRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/LogisticsJobResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/logistics/jobs/{jobId}/decline": {
+   "post": {
+    "tags": [
+     "logistics-controller"
+    ],
+    "operationId": "decline",
+    "parameters": [
+     {
+      "name": "jobId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/LogisticsJobResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/logistics/jobs/{jobId}/assign": {
+   "post": {
+    "tags": [
+     "logistics-controller"
+    ],
+    "operationId": "assignDriver",
+    "parameters": [
+     {
+      "name": "jobId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AssignDriverRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/LogisticsJobResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/inspections": {
+   "get": {
+    "tags": [
+     "inspection-controller"
+    ],
+    "operationId": "list",
+    "parameters": [
+     {
+      "name": "productId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/InspectionResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "inspection-controller"
+    ],
+    "operationId": "create_5",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreateInspectionRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/InspectionResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/inspections/{inspectionId}/result": {
+   "post": {
+    "tags": [
+     "inspection-controller"
+    ],
+    "operationId": "submitResult",
+    "parameters": [
+     {
+      "name": "inspectionId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SubmitInspectionResultRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/InspectionResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/inspections/{inspectionId}/photos": {
+   "get": {
+    "tags": [
+     "visit-photo-controller"
+    ],
+    "operationId": "list_1",
+    "parameters": [
+     {
+      "name": "inspectionId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/VisitPhotoResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "visit-photo-controller"
+    ],
+    "operationId": "upload",
+    "parameters": [
+     {
+      "name": "inspectionId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "required": [
+         "file"
+        ],
+        "type": "object",
+        "properties": {
+         "file": {
+          "type": "string",
+          "format": "binary"
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/VisitPhotoResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/disputes": {
+   "get": {
+    "tags": [
+     "dispute-controller"
+    ],
+    "operationId": "allDisputes",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DisputeResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "dispute-controller"
+    ],
+    "operationId": "create_6",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreateDisputeRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/DisputeResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/disputes/{disputeId}/resolve": {
+   "post": {
+    "tags": [
+     "dispute-controller"
+    ],
+    "operationId": "resolve",
+    "parameters": [
+     {
+      "name": "disputeId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ResolveDisputeRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/DisputeResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/disputes/{disputeId}/escalate": {
+   "post": {
+    "tags": [
+     "dispute-controller"
+    ],
+    "operationId": "escalate",
+    "parameters": [
+     {
+      "name": "disputeId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/DisputeResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/contact-messages": {
+   "get": {
+    "tags": [
+     "contact-message-controller"
+    ],
+    "operationId": "list_2",
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "OPEN",
+        "RESOLVED"
+       ]
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ContactMessageResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "contact-message-controller"
+    ],
+    "operationId": "submit",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ContactMessageRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/ContactMessageResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/checkout/validate": {
+   "post": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "validateCheckout",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CheckoutValidationRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/CheckoutValidationResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories": {
+   "get": {
+    "tags": [
+     "category-controller"
+    ],
+    "operationId": "list_3",
+    "parameters": [
+     {
+      "name": "sector",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "FARM_PRODUCE",
+        "AGRI_INPUTS"
+       ]
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CategoryResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "category-controller"
+    ],
+    "operationId": "create_7",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreateCategoryRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/cart": {
+   "post": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "addToCart",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AddToCartRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/CartItemResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/cart/checkout": {
+   "post": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "checkout",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CheckoutRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/CustomerOrderResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/badges/award": {
+   "post": {
+    "tags": [
+     "badge-controller"
+    ],
+    "operationId": "award",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AwardBadgeRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/UserBadgeResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/reset-password": {
+   "post": {
+    "tags": [
+     "auth-controller"
+    ],
+    "operationId": "resetPassword",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ResetPasswordRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   }
+  },
+  "/api/v1/auth/signup": {
+   "post": {
+    "tags": [
+     "auth-controller"
+    ],
+    "operationId": "signup",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SignupRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AuthResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/register": {
+   "post": {
+    "tags": [
+     "auth-controller"
+    ],
+    "operationId": "signup_1",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SignupRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AuthResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/refresh": {
+   "post": {
+    "tags": [
+     "auth-controller"
+    ],
+    "operationId": "refresh",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RefreshTokenRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AuthResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/logout": {
+   "post": {
+    "tags": [
+     "auth-controller"
+    ],
+    "operationId": "logout",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LogoutRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   }
+  },
+  "/api/v1/auth/login": {
+   "post": {
+    "tags": [
+     "auth-controller"
+    ],
+    "operationId": "login",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LoginRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AuthResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/forgot-password": {
+   "post": {
+    "tags": [
+     "auth-controller"
+    ],
+    "operationId": "forgotPassword",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ForgotPasswordRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/ForgotPasswordResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/audit-reports/inspection/{inspectionId}": {
+   "get": {
+    "tags": [
+     "audit-report-controller"
+    ],
+    "operationId": "getByInspectionId",
+    "parameters": [
+     {
+      "name": "inspectionId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AuditReportResponse"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "audit-report-controller"
+    ],
+    "operationId": "create_8",
+    "parameters": [
+     {
+      "name": "inspectionId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreateAuditReportRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AuditReportResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admins/signup": {
+   "post": {
+    "tags": [
+     "admin-signup-controller"
+    ],
+    "operationId": "signup_2",
+    "parameters": [
+     {
+      "name": "X-Admin-Bootstrap-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AdminSignupRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AuthResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/addresses": {
+   "get": {
+    "tags": [
+     "address-controller"
+    ],
+    "operationId": "myAddresses",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/AddressResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "address-controller"
+    ],
+    "operationId": "create_9",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreateAddressRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AddressResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/users/{userId}/verification": {
+   "patch": {
+    "tags": [
+     "user-controller"
+    ],
+    "operationId": "updateVerification",
+    "parameters": [
+     {
+      "name": "userId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UpdateUserVerificationRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/UserProfileResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/users/{userId}/status": {
+   "patch": {
+    "tags": [
+     "user-controller"
+    ],
+    "operationId": "updateStatus",
+    "parameters": [
+     {
+      "name": "userId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UpdateUserStatusRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/UserProfileResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/products/{productId}/status": {
+   "patch": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "moderate",
+    "parameters": [
+     {
+      "name": "productId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ModerateProductRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/ProductResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orders/{orderId}/status": {
+   "patch": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "updateStatus_1",
+    "parameters": [
+     {
+      "name": "orderId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UpdateOrderStatusRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/OrderResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/logistics/jobs/{jobId}/status": {
+   "patch": {
+    "tags": [
+     "logistics-controller"
+    ],
+    "operationId": "updateStatus_2",
+    "parameters": [
+     {
+      "name": "jobId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UpdateLogisticsJobStatusRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/LogisticsJobResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/inspections/{inspectionId}/status": {
+   "patch": {
+    "tags": [
+     "inspection-controller"
+    ],
+    "operationId": "updateStatus_3",
+    "parameters": [
+     {
+      "name": "inspectionId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UpdateInspectionStatusRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/InspectionResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/contact-messages/{messageId}/resolve": {
+   "patch": {
+    "tags": [
+     "contact-message-controller"
+    ],
+    "operationId": "resolve_1",
+    "parameters": [
+     {
+      "name": "messageId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/ContactMessageResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/cart/items/{cartItemId}": {
+   "delete": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "removeCartItem",
+    "parameters": [
+     {
+      "name": "cartItemId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "updateCartItem",
+    "parameters": [
+     {
+      "name": "cartItemId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UpdateCartItemRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/CartItemResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/users": {
+   "get": {
+    "tags": [
+     "user-controller"
+    ],
+    "operationId": "listProfiles",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/UserProfileResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/users/{userId}": {
+   "get": {
+    "tags": [
+     "user-controller"
+    ],
+    "operationId": "profileById",
+    "parameters": [
+     {
+      "name": "userId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/UserProfileResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/site-visits/{visitId}": {
+   "get": {
+    "tags": [
+     "site-visit-controller"
+    ],
+    "operationId": "getById",
+    "parameters": [
+     {
+      "name": "visitId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/SiteVisitResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/sellers/{sellerId}/profile": {
+   "get": {
+    "tags": [
+     "seller-profile-controller"
+    ],
+    "operationId": "profile",
+    "parameters": [
+     {
+      "name": "sellerId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PublicSellerProfileResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/sellers/{sellerId}/products": {
+   "get": {
+    "tags": [
+     "seller-catalog-controller"
+    ],
+    "operationId": "productsOf",
+    "parameters": [
+     {
+      "name": "sellerId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ProductResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/products/saved": {
+   "get": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "saved",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ProductResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/products/mine": {
+   "get": {
+    "tags": [
+     "product-controller"
+    ],
+    "operationId": "myProducts",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ProductResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/photos/{photoId}": {
+   "get": {
+    "tags": [
+     "visit-photo-controller"
+    ],
+    "operationId": "metadata",
+    "parameters": [
+     {
+      "name": "photoId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/VisitPhotoResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/photos/{photoId}/content": {
+   "get": {
+    "tags": [
+     "visit-photo-controller"
+    ],
+    "operationId": "content",
+    "parameters": [
+     {
+      "name": "photoId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "string",
+         "format": "byte"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments/{paymentId}": {
+   "get": {
+    "tags": [
+     "payment-controller"
+    ],
+    "operationId": "getById_2",
+    "parameters": [
+     {
+      "name": "paymentId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PaymentResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments/outbound": {
+   "get": {
+    "tags": [
+     "payment-controller"
+    ],
+    "operationId": "outboundPayments",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PaymentResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments/inbound": {
+   "get": {
+    "tags": [
+     "payment-controller"
+    ],
+    "operationId": "inboundPayments",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PaymentResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orders/{orderId}": {
+   "get": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "getById_3",
+    "parameters": [
+     {
+      "name": "orderId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/OrderResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/orders/mine": {
+   "get": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "myOrders",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/OrderResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/notifications": {
+   "get": {
+    "tags": [
+     "notification-controller"
+    ],
+    "operationId": "myNotifications",
+    "parameters": [
+     {
+      "name": "unread",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/NotificationResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/notifications/{notificationId}": {
+   "get": {
+    "tags": [
+     "notification-controller"
+    ],
+    "operationId": "getById_4",
+    "parameters": [
+     {
+      "name": "notificationId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/NotificationResponse"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "notification-controller"
+    ],
+    "operationId": "delete",
+    "parameters": [
+     {
+      "name": "notificationId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK"
+     }
+    }
+   }
+  },
+  "/api/v1/notifications/unread-count": {
+   "get": {
+    "tags": [
+     "notification-controller"
+    ],
+    "operationId": "unreadCount",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "integer",
+         "format": "int64"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/logistics/jobs/order/{orderId}": {
+   "get": {
+    "tags": [
+     "logistics-controller"
+    ],
+    "operationId": "getByOrderId",
+    "parameters": [
+     {
+      "name": "orderId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/LogisticsJobResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/logistics/jobs/mine": {
+   "get": {
+    "tags": [
+     "logistics-controller"
+    ],
+    "operationId": "myJobs",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/LogisticsJobResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/logistics/jobs/available": {
+   "get": {
+    "tags": [
+     "logistics-controller"
+    ],
+    "operationId": "availableJobs",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/LogisticsJobResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/inspections/{inspectionId}": {
+   "get": {
+    "tags": [
+     "inspection-controller"
+    ],
+    "operationId": "getById_5",
+    "parameters": [
+     {
+      "name": "inspectionId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/InspectionResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/inspections/checklists": {
+   "get": {
+    "tags": [
+     "inspection-controller"
+    ],
+    "operationId": "checklists",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/InspectionChecklist"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/disputes/{disputeId}": {
+   "get": {
+    "tags": [
+     "dispute-controller"
+    ],
+    "operationId": "getById_6",
+    "parameters": [
+     {
+      "name": "disputeId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/DisputeResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/disputes/mine": {
+   "get": {
+    "tags": [
+     "dispute-controller"
+    ],
+    "operationId": "myDisputes",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DisputeResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/contact-messages/{messageId}": {
+   "get": {
+    "tags": [
+     "contact-message-controller"
+    ],
+    "operationId": "getById_7",
+    "parameters": [
+     {
+      "name": "messageId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/ContactMessageResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/cart/items": {
+   "get": {
+    "tags": [
+     "order-controller"
+    ],
+    "operationId": "myCart",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/CartResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/badges": {
+   "get": {
+    "tags": [
+     "badge-controller"
+    ],
+    "operationId": "list_4",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/BadgeResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/badges/user/{userId}": {
+   "get": {
+    "tags": [
+     "badge-controller"
+    ],
+    "operationId": "badgesForUser",
+    "parameters": [
+     {
+      "name": "userId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/UserBadgeResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/badges/mine": {
+   "get": {
+    "tags": [
+     "badge-controller"
+    ],
+    "operationId": "myBadges",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/UserBadgeResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/me": {
+   "get": {
+    "tags": [
+     "auth-controller"
+    ],
+    "operationId": "me_1",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/UserProfileResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/audit-reports/{reportId}": {
+   "get": {
+    "tags": [
+     "audit-report-controller"
+    ],
+    "operationId": "getById_8",
+    "parameters": [
+     {
+      "name": "reportId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AuditReportResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/audit-logs": {
+   "get": {
+    "tags": [
+     "audit-log-controller"
+    ],
+    "operationId": "list_5",
+    "parameters": [
+     {
+      "name": "actorId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "entityType",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "entityId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "action",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/AuditLogResponse"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/users": {
+   "get": {
+    "tags": [
+     "admin-controller"
+    ],
+    "operationId": "users",
+    "parameters": [
+     {
+      "name": "role",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "BUYER",
+        "SUPPLIER",
+        "FARMER",
+        "INSPECTOR",
+        "DRIVER",
+        "ADMIN"
+       ]
+      }
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "ACTIVE",
+        "SUSPENDED"
+       ]
+      }
+     },
+     {
+      "name": "pageable",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "$ref": "#/components/schemas/Pageable"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PageUserProfileResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/reports": {
+   "get": {
+    "tags": [
+     "admin-controller"
+    ],
+    "operationId": "reports",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AdminReportsResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/products": {
+   "get": {
+    "tags": [
+     "admin-controller"
+    ],
+    "operationId": "products",
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "ACTIVE",
+        "INACTIVE",
+        "HIDDEN",
+        "PENDING_APPROVAL"
+       ]
+      }
+     },
+     {
+      "name": "sector",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "FARM_PRODUCE",
+        "AGRI_INPUTS"
+       ]
+      }
+     },
+     {
+      "name": "categoryId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     },
+     {
+      "name": "sellerId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     },
+     {
+      "name": "query",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "pageable",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "$ref": "#/components/schemas/Pageable"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PageProductResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/payments": {
+   "get": {
+    "tags": [
+     "admin-controller"
+    ],
+    "operationId": "payments",
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "PENDING",
+        "VERIFIED",
+        "FAILED",
+        "REFUNDED"
+       ]
+      }
+     },
+     {
+      "name": "provider",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "pageable",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "$ref": "#/components/schemas/Pageable"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PagePaymentResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/orders": {
+   "get": {
+    "tags": [
+     "admin-controller"
+    ],
+    "operationId": "orders",
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "PLACED",
+        "CONFIRMED",
+        "READY_FOR_PICKUP",
+        "IN_PROGRESS",
+        "DELIVERED",
+        "COMPLETED",
+        "CANCELLED",
+        "REJECTED"
+       ]
+      }
+     },
+     {
+      "name": "buyerId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     },
+     {
+      "name": "sellerId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     },
+     {
+      "name": "pageable",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "$ref": "#/components/schemas/Pageable"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PageOrderResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/logistics/jobs": {
+   "get": {
+    "tags": [
+     "admin-controller"
+    ],
+    "operationId": "logistics",
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "PENDING_ACCEPTANCE",
+        "ACCEPTED",
+        "AT_PICKUP",
+        "PICKED_UP",
+        "IN_TRANSIT",
+        "DELIVERED",
+        "FAILED",
+        "CANCELLED"
+       ]
+      }
+     },
+     {
+      "name": "driverId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     },
+     {
+      "name": "pageable",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "$ref": "#/components/schemas/Pageable"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PageLogisticsJobResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/disputes": {
+   "get": {
+    "tags": [
+     "admin-controller"
+    ],
+    "operationId": "disputes",
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "OPEN",
+        "ESCALATED",
+        "RESOLVED"
+       ]
+      }
+     },
+     {
+      "name": "pageable",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "$ref": "#/components/schemas/Pageable"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/PageDisputeResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/dashboard": {
+   "get": {
+    "tags": [
+     "admin-controller"
+    ],
+    "operationId": "dashboard",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "$ref": "#/components/schemas/AdminDashboardResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/": {
+   "get": {
+    "tags": [
+     "root-controller"
+    ],
+    "operationId": "root",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "*/*": {
+        "schema": {
+         "type": "object"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "UpdateUserProfileRequest": {
+    "type": "object",
+    "properties": {
+     "fullName": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "phoneNumber": {
+      "maxLength": 20,
+      "minLength": 0,
+      "type": "string"
+     },
+     "businessName": {
+      "maxLength": 150,
+      "minLength": 0,
+      "type": "string"
+     },
+     "farmName": {
+      "maxLength": 150,
+      "minLength": 0,
+      "type": "string"
+     },
+     "farmLocation": {
+      "maxLength": 200,
+      "minLength": 0,
+      "type": "string"
+     },
+     "vehicleType": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "vehiclePlate": {
+      "maxLength": 50,
+      "minLength": 0,
+      "type": "string"
+     },
+     "serviceArea": {
+      "maxLength": 150,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "UserProfileResponse": {
+    "type": "object",
+    "properties": {
+     "userId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "email": {
+      "type": "string"
+     },
+     "fullName": {
+      "type": "string"
+     },
+     "phoneNumber": {
+      "type": "string"
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "BUYER",
+       "SUPPLIER",
+       "FARMER",
+       "INSPECTOR",
+       "DRIVER",
+       "ADMIN"
+      ]
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "ACTIVE",
+       "SUSPENDED"
+      ]
+     },
+     "verificationStatus": {
+      "type": "string",
+      "enum": [
+       "UNVERIFIED",
+       "PENDING",
+       "VERIFIED"
+      ]
+     },
+     "businessName": {
+      "type": "string"
+     },
+     "farmName": {
+      "type": "string"
+     },
+     "farmLocation": {
+      "type": "string"
+     },
+     "employeeCode": {
+      "type": "string"
+     },
+     "licenseNumber": {
+      "type": "string"
+     },
+     "vehicleType": {
+      "type": "string"
+     },
+     "vehiclePlate": {
+      "type": "string"
+     },
+     "serviceArea": {
+      "type": "string"
+     }
+    }
+   },
+   "UpdateProductRequest": {
+    "type": "object",
+    "properties": {
+     "title": {
+      "maxLength": 150,
+      "minLength": 0,
+      "type": "string"
+     },
+     "description": {
+      "maxLength": 1000,
+      "minLength": 0,
+      "type": "string"
+     },
+     "unit": {
+      "maxLength": 30,
+      "minLength": 0,
+      "type": "string"
+     },
+     "unitPrice": {
+      "minimum": 0.01,
+      "exclusiveMinimum": false,
+      "type": "number"
+     },
+     "availableQuantity": {
+      "minimum": 0,
+      "exclusiveMinimum": false,
+      "type": "number"
+     },
+     "categoryId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "lowStockThreshold": {
+      "minimum": 0,
+      "exclusiveMinimum": false,
+      "type": "number"
+     },
+     "minimumOrderQuantity": {
+      "minimum": 0.01,
+      "exclusiveMinimum": false,
+      "type": "number"
+     }
+    }
+   },
+   "ProductImageResponse": {
+    "type": "object",
+    "properties": {
+     "imageId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "fileName": {
+      "type": "string"
+     },
+     "contentType": {
+      "type": "string"
+     },
+     "sizeBytes": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "url": {
+      "type": "string"
+     },
+     "sortOrder": {
+      "type": "integer",
+      "format": "int32"
+     }
+    }
+   },
+   "ProductResponse": {
+    "type": "object",
+    "properties": {
+     "productId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "sellerId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "sellerName": {
+      "type": "string"
+     },
+     "sellerType": {
+      "type": "string",
+      "enum": [
+       "FARMER",
+       "SUPPLIER"
+      ]
+     },
+     "sector": {
+      "type": "string",
+      "enum": [
+       "FARM_PRODUCE",
+       "AGRI_INPUTS"
+      ]
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "ACTIVE",
+       "INACTIVE",
+       "HIDDEN",
+       "PENDING_APPROVAL"
+      ]
+     },
+     "categoryId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "categoryName": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "description": {
+      "type": "string"
+     },
+     "unit": {
+      "type": "string"
+     },
+     "unitPrice": {
+      "type": "number"
+     },
+     "availableQuantity": {
+      "type": "number"
+     },
+     "reservedQuantity": {
+      "type": "number"
+     },
+     "soldQuantity": {
+      "type": "number"
+     },
+     "lowStockThreshold": {
+      "type": "number"
+     },
+     "minimumOrderQuantity": {
+      "type": "number"
+     },
+     "lowStock": {
+      "type": "boolean"
+     },
+     "images": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/ProductImageResponse"
+      }
+     },
+     "createdAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "CreateAddressRequest": {
+    "required": [
+     "addressLine",
+     "label"
+    ],
+    "type": "object",
+    "properties": {
+     "label": {
+      "maxLength": 50,
+      "minLength": 0,
+      "type": "string"
+     },
+     "addressLine": {
+      "maxLength": 300,
+      "minLength": 0,
+      "type": "string"
+     },
+     "latitude": {
+      "type": "number",
+      "format": "double"
+     },
+     "longitude": {
+      "type": "number",
+      "format": "double"
+     },
+     "isDefault": {
+      "type": "boolean"
+     }
+    }
+   },
+   "AddressResponse": {
+    "type": "object",
+    "properties": {
+     "addressId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "label": {
+      "type": "string"
+     },
+     "addressLine": {
+      "type": "string"
+     },
+     "latitude": {
+      "type": "number",
+      "format": "double"
+     },
+     "longitude": {
+      "type": "number",
+      "format": "double"
+     },
+     "isDefault": {
+      "type": "boolean"
+     }
+    }
+   },
+   "PaymentWebhookRequest": {
+    "required": [
+     "eventType",
+     "externalId",
+     "reference"
+    ],
+    "type": "object",
+    "properties": {
+     "eventType": {
+      "type": "string",
+      "enum": [
+       "VERIFIED",
+       "FAILED"
+      ]
+     },
+     "externalId": {
+      "type": "string"
+     },
+     "reference": {
+      "type": "string"
+     }
+    }
+   },
+   "CreateSiteVisitRequest": {
+    "required": [
+     "productId"
+    ],
+    "type": "object",
+    "properties": {
+     "productId": {
+      "type": "string",
+      "format": "uuid"
+     }
+    }
+   },
+   "SiteVisitResponse": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "farmerId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "productId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "productTitle": {
+      "type": "string"
+     },
+     "requestedAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "scheduledAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "REQUESTED",
+       "SCHEDULED",
+       "COMPLETED",
+       "REJECTED"
+      ]
+     }
+    }
+   },
+   "ScheduleSiteVisitRequest": {
+    "required": [
+     "scheduledAt"
+    ],
+    "type": "object",
+    "properties": {
+     "scheduledAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "CreateProductRequest": {
+    "required": [
+     "availableQuantity",
+     "description",
+     "title",
+     "unit",
+     "unitPrice"
+    ],
+    "type": "object",
+    "properties": {
+     "title": {
+      "maxLength": 150,
+      "minLength": 0,
+      "type": "string"
+     },
+     "description": {
+      "maxLength": 1000,
+      "minLength": 0,
+      "type": "string"
+     },
+     "unit": {
+      "maxLength": 30,
+      "minLength": 0,
+      "type": "string"
+     },
+     "unitPrice": {
+      "minimum": 0.01,
+      "exclusiveMinimum": false,
+      "type": "number"
+     },
+     "availableQuantity": {
+      "minimum": 0,
+      "exclusiveMinimum": false,
+      "type": "number"
+     },
+     "categoryId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "lowStockThreshold": {
+      "minimum": 0,
+      "exclusiveMinimum": false,
+      "type": "number"
+     },
+     "minimumOrderQuantity": {
+      "minimum": 0.01,
+      "exclusiveMinimum": false,
+      "type": "number"
+     }
+    }
+   },
+   "RegisterProductImageRequest": {
+    "required": [
+     "contentType",
+     "fileName",
+     "url"
+    ],
+    "type": "object",
+    "properties": {
+     "fileName": {
+      "maxLength": 255,
+      "minLength": 0,
+      "type": "string"
+     },
+     "contentType": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "sizeBytes": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "url": {
+      "maxLength": 500,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "CreatePaymentRequest": {
+    "required": [
+     "idempotencyKey",
+     "orderId",
+     "provider"
+    ],
+    "type": "object",
+    "properties": {
+     "orderId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "provider": {
+      "type": "string"
+     },
+     "idempotencyKey": {
+      "type": "string"
+     }
+    }
+   },
+   "PaymentResponse": {
+    "type": "object",
+    "properties": {
+     "paymentId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "orderId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "PENDING",
+       "VERIFIED",
+       "FAILED",
+       "REFUNDED"
+      ]
+     },
+     "provider": {
+      "type": "string"
+     },
+     "amount": {
+      "type": "number"
+     },
+     "idempotencyKey": {
+      "type": "string"
+     },
+     "externalId": {
+      "type": "string"
+     },
+     "gatewayReference": {
+      "type": "string"
+     }
+    }
+   },
+   "VerifyPaymentRequest": {
+    "required": [
+     "idempotencyKey"
+    ],
+    "type": "object",
+    "properties": {
+     "idempotencyKey": {
+      "type": "string"
+     }
+    }
+   },
+   "CreateOrderRequest": {
+    "required": [
+     "currency",
+     "productId",
+     "quantity"
+    ],
+    "type": "object",
+    "properties": {
+     "productId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "quantity": {
+      "minimum": 0.01,
+      "exclusiveMinimum": false,
+      "type": "number"
+     },
+     "currency": {
+      "type": "string"
+     }
+    }
+   },
+   "OrderItemResponse": {
+    "type": "object",
+    "properties": {
+     "productId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "productTitle": {
+      "type": "string"
+     },
+     "quantity": {
+      "type": "number"
+     },
+     "unitPrice": {
+      "type": "number"
+     },
+     "lineTotal": {
+      "type": "number"
+     }
+    }
+   },
+   "OrderResponse": {
+    "type": "object",
+    "properties": {
+     "orderId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "customerOrderId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "buyerId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "sellerId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "PLACED",
+       "CONFIRMED",
+       "READY_FOR_PICKUP",
+       "IN_PROGRESS",
+       "DELIVERED",
+       "COMPLETED",
+       "CANCELLED",
+       "REJECTED"
+      ]
+     },
+     "subtotal": {
+      "type": "number"
+     },
+     "deliveryFee": {
+      "type": "number"
+     },
+     "totalAmount": {
+      "type": "number"
+     },
+     "currency": {
+      "type": "string"
+     },
+     "createdAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "items": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/OrderItemResponse"
+      }
+     }
+    }
+   },
+   "NotificationResponse": {
+    "type": "object",
+    "properties": {
+     "notificationId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "type": {
+      "type": "string",
+      "enum": [
+       "ORDER",
+       "PAYMENT",
+       "INSPECTION",
+       "LOGISTICS",
+       "MESSAGE",
+       "SYSTEM"
+      ]
+     },
+     "title": {
+      "type": "string"
+     },
+     "body": {
+      "type": "string"
+     },
+     "read": {
+      "type": "boolean"
+     },
+     "readAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "link": {
+      "type": "string"
+     },
+     "createdAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "CreateLogisticsJobRequest": {
+    "required": [
+     "deliveryAddressId",
+     "estimatedArrival",
+     "orderId",
+     "pickupAddressId"
+    ],
+    "type": "object",
+    "properties": {
+     "orderId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "notes": {
+      "maxLength": 500,
+      "minLength": 0,
+      "type": "string"
+     },
+     "estimatedArrival": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "pickupAddressId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "deliveryAddressId": {
+      "type": "string",
+      "format": "uuid"
+     }
+    }
+   },
+   "LogisticsJobResponse": {
+    "type": "object",
+    "properties": {
+     "jobId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "orderId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "PENDING_ACCEPTANCE",
+       "ACCEPTED",
+       "AT_PICKUP",
+       "PICKED_UP",
+       "IN_TRANSIT",
+       "DELIVERED",
+       "FAILED",
+       "CANCELLED"
+      ]
+     },
+     "driverId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "driverName": {
+      "type": "string"
+     },
+     "notes": {
+      "type": "string"
+     },
+     "estimatedArrival": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "pickupAddressId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "deliveryAddressId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "podSubmittedAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "deliveredTo": {
+      "type": "string"
+     },
+     "createdAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "TrackingEventRequest": {
+    "required": [
+     "status"
+    ],
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "PENDING_ACCEPTANCE",
+       "ACCEPTED",
+       "AT_PICKUP",
+       "PICKED_UP",
+       "IN_TRANSIT",
+       "DELIVERED",
+       "FAILED",
+       "CANCELLED"
+      ]
+     },
+     "latitude": {
+      "type": "number",
+      "format": "double"
+     },
+     "longitude": {
+      "type": "number",
+      "format": "double"
+     },
+     "locationName": {
+      "maxLength": 200,
+      "minLength": 0,
+      "type": "string"
+     },
+     "note": {
+      "maxLength": 500,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "TrackingEventResponse": {
+    "type": "object",
+    "properties": {
+     "trackingEventId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "jobId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "PENDING_ACCEPTANCE",
+       "ACCEPTED",
+       "AT_PICKUP",
+       "PICKED_UP",
+       "IN_TRANSIT",
+       "DELIVERED",
+       "FAILED",
+       "CANCELLED"
+      ]
+     },
+     "latitude": {
+      "type": "number",
+      "format": "double"
+     },
+     "longitude": {
+      "type": "number",
+      "format": "double"
+     },
+     "locationName": {
+      "type": "string"
+     },
+     "note": {
+      "type": "string"
+     },
+     "loggedAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "SubmitProofOfDeliveryRequest": {
+    "required": [
+     "contentType",
+     "deliveredTo",
+     "fileName"
+    ],
+    "type": "object",
+    "properties": {
+     "fileName": {
+      "maxLength": 255,
+      "minLength": 0,
+      "type": "string"
+     },
+     "contentType": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "deliveredTo": {
+      "maxLength": 150,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "AssignDriverRequest": {
+    "required": [
+     "driverId"
+    ],
+    "type": "object",
+    "properties": {
+     "driverId": {
+      "type": "string",
+      "format": "uuid"
+     }
+    }
+   },
+   "CreateInspectionRequest": {
+    "required": [
+     "productId",
+     "scheduledAt"
+    ],
+    "type": "object",
+    "properties": {
+     "productId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "checklistId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "scheduledAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "InspectionResponse": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "inspectorId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "productId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "productTitle": {
+      "type": "string"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "SCHEDULED",
+       "IN_PROGRESS",
+       "PASSED",
+       "FAILED"
+      ]
+     },
+     "result": {
+      "type": "string",
+      "enum": [
+       "APPROVED",
+       "REJECTED",
+       "CHANGES_REQUIRED"
+      ]
+     },
+     "checklistId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "rating": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "findings": {
+      "type": "string"
+     },
+     "scheduledAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "performedAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "nextInspectionDate": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "SubmitInspectionResultRequest": {
+    "required": [
+     "result"
+    ],
+    "type": "object",
+    "properties": {
+     "result": {
+      "type": "string",
+      "enum": [
+       "APPROVED",
+       "REJECTED",
+       "CHANGES_REQUIRED"
+      ]
+     },
+     "rating": {
+      "maximum": 5,
+      "minimum": 1,
+      "type": "integer",
+      "format": "int32"
+     },
+     "findings": {
+      "maxLength": 2000,
+      "minLength": 0,
+      "type": "string"
+     },
+     "nextInspectionDate": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "VisitPhotoResponse": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "inspectionId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "fileName": {
+      "type": "string"
+     },
+     "contentType": {
+      "type": "string"
+     },
+     "sizeBytes": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "uploadedAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "downloadUrl": {
+      "type": "string"
+     }
+    }
+   },
+   "CreateDisputeRequest": {
+    "required": [
+     "description",
+     "orderId",
+     "subject"
+    ],
+    "type": "object",
+    "properties": {
+     "orderId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "subject": {
+      "maxLength": 200,
+      "minLength": 0,
+      "type": "string"
+     },
+     "description": {
+      "maxLength": 2000,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "DisputeResponse": {
+    "type": "object",
+    "properties": {
+     "disputeId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "orderId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "raisedById": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "OPEN",
+       "ESCALATED",
+       "RESOLVED"
+      ]
+     },
+     "subject": {
+      "type": "string"
+     },
+     "description": {
+      "type": "string"
+     },
+     "resolutionNote": {
+      "type": "string"
+     },
+     "resolvedById": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "resolvedAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "createdAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "ResolveDisputeRequest": {
+    "required": [
+     "resolutionNote"
+    ],
+    "type": "object",
+    "properties": {
+     "resolutionNote": {
+      "maxLength": 2000,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "ContactMessageRequest": {
+    "required": [
+     "body",
+     "email",
+     "name",
+     "subject"
+    ],
+    "type": "object",
+    "properties": {
+     "name": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "email": {
+      "maxLength": 120,
+      "minLength": 0,
+      "type": "string"
+     },
+     "subject": {
+      "maxLength": 200,
+      "minLength": 0,
+      "type": "string"
+     },
+     "body": {
+      "maxLength": 2000,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "ContactMessageResponse": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "name": {
+      "type": "string"
+     },
+     "email": {
+      "type": "string"
+     },
+     "subject": {
+      "type": "string"
+     },
+     "body": {
+      "type": "string"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "OPEN",
+       "RESOLVED"
+      ]
+     },
+     "createdAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "CheckoutValidationRequest": {
+    "required": [
+     "currency",
+     "pickupAddressId",
+     "shippingAddressId"
+    ],
+    "type": "object",
+    "properties": {
+     "shippingAddressId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "pickupAddressId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "currency": {
+      "type": "string"
+     }
+    }
+   },
+   "CheckoutValidationResponse": {
+    "type": "object",
+    "properties": {
+     "buyerId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "sellerCount": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "itemCount": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "subtotal": {
+      "type": "number"
+     },
+     "deliveryFee": {
+      "type": "number"
+     },
+     "total": {
+      "type": "number"
+     },
+     "currency": {
+      "type": "string"
+     },
+     "sellers": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/SellerTotals"
+      }
+     }
+    }
+   },
+   "SellerTotals": {
+    "type": "object",
+    "properties": {
+     "sellerId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "sellerName": {
+      "type": "string"
+     },
+     "subtotal": {
+      "type": "number"
+     },
+     "deliveryFee": {
+      "type": "number"
+     },
+     "total": {
+      "type": "number"
+     }
+    }
+   },
+   "CreateCategoryRequest": {
+    "required": [
+     "name",
+     "sector"
+    ],
+    "type": "object",
+    "properties": {
+     "name": {
+      "maxLength": 150,
+      "minLength": 0,
+      "type": "string"
+     },
+     "sector": {
+      "type": "string",
+      "enum": [
+       "FARM_PRODUCE",
+       "AGRI_INPUTS"
+      ]
+     }
+    }
+   },
+   "CategoryResponse": {
+    "type": "object",
+    "properties": {
+     "categoryId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "name": {
+      "type": "string"
+     },
+     "sector": {
+      "type": "string",
+      "enum": [
+       "FARM_PRODUCE",
+       "AGRI_INPUTS"
+      ]
+     },
+     "active": {
+      "type": "boolean"
+     }
+    }
+   },
+   "AddToCartRequest": {
+    "required": [
+     "productId",
+     "quantity"
+    ],
+    "type": "object",
+    "properties": {
+     "productId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "quantity": {
+      "minimum": 0.01,
+      "exclusiveMinimum": false,
+      "type": "number"
+     }
+    }
+   },
+   "CartItemResponse": {
+    "type": "object",
+    "properties": {
+     "cartItemId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "productId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "productTitle": {
+      "type": "string"
+     },
+     "sellerId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "sellerName": {
+      "type": "string"
+     },
+     "unitPrice": {
+      "type": "number"
+     },
+     "quantity": {
+      "type": "number"
+     },
+     "lineTotal": {
+      "type": "number"
+     },
+     "addedAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "CheckoutRequest": {
+    "required": [
+     "currency",
+     "pickupAddressId",
+     "shippingAddressId"
+    ],
+    "type": "object",
+    "properties": {
+     "shippingAddressId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "pickupAddressId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "currency": {
+      "type": "string"
+     }
+    }
+   },
+   "CustomerOrderResponse": {
+    "type": "object",
+    "properties": {
+     "customerOrderId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "buyerId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "NEW",
+       "PAID",
+       "CANCELLED"
+      ]
+     },
+     "totalAmount": {
+      "type": "number"
+     },
+     "currency": {
+      "type": "string"
+     },
+     "shippingAddressId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "pickupAddressId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "createdAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "subOrders": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/OrderResponse"
+      }
+     }
+    }
+   },
+   "AwardBadgeRequest": {
+    "required": [
+     "badgeCode",
+     "userId"
+    ],
+    "type": "object",
+    "properties": {
+     "userId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "badgeCode": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "note": {
+      "maxLength": 500,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "UserBadgeResponse": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "userId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "badgeCode": {
+      "type": "string"
+     },
+     "badgeName": {
+      "type": "string"
+     },
+     "badgeDescription": {
+      "type": "string"
+     },
+     "badgeIcon": {
+      "type": "string"
+     },
+     "awardedBy": {
+      "type": "string"
+     },
+     "note": {
+      "type": "string"
+     },
+     "awardedAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "ResetPasswordRequest": {
+    "required": [
+     "email",
+     "newPassword",
+     "token"
+    ],
+    "type": "object",
+    "properties": {
+     "email": {
+      "type": "string"
+     },
+     "token": {
+      "maxLength": 512,
+      "minLength": 0,
+      "type": "string"
+     },
+     "newPassword": {
+      "maxLength": 72,
+      "minLength": 8,
+      "type": "string"
+     }
+    }
+   },
+   "SignupRequest": {
+    "required": [
+     "email",
+     "fullName",
+     "password",
+     "phoneNumber",
+     "role"
+    ],
+    "type": "object",
+    "properties": {
+     "email": {
+      "type": "string"
+     },
+     "password": {
+      "maxLength": 72,
+      "minLength": 8,
+      "type": "string"
+     },
+     "fullName": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "phoneNumber": {
+      "maxLength": 20,
+      "minLength": 0,
+      "type": "string"
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "BUYER",
+       "SUPPLIER",
+       "FARMER",
+       "INSPECTOR",
+       "DRIVER",
+       "ADMIN"
+      ]
+     },
+     "businessName": {
+      "maxLength": 150,
+      "minLength": 0,
+      "type": "string"
+     },
+     "farmName": {
+      "maxLength": 150,
+      "minLength": 0,
+      "type": "string"
+     },
+     "farmLocation": {
+      "maxLength": 200,
+      "minLength": 0,
+      "type": "string"
+     },
+     "employeeCode": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "licenseNumber": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "vehicleType": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "vehiclePlate": {
+      "maxLength": 50,
+      "minLength": 0,
+      "type": "string"
+     },
+     "serviceArea": {
+      "maxLength": 150,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "AuthResponse": {
+    "type": "object",
+    "properties": {
+     "userId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "email": {
+      "type": "string"
+     },
+     "fullName": {
+      "type": "string"
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "BUYER",
+       "SUPPLIER",
+       "FARMER",
+       "INSPECTOR",
+       "DRIVER",
+       "ADMIN"
+      ]
+     },
+     "accessToken": {
+      "type": "string"
+     },
+     "refreshToken": {
+      "type": "string"
+     },
+     "refreshTokenExpiresAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "RefreshTokenRequest": {
+    "required": [
+     "refreshToken"
+    ],
+    "type": "object",
+    "properties": {
+     "refreshToken": {
+      "maxLength": 512,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "LogoutRequest": {
+    "required": [
+     "refreshToken"
+    ],
+    "type": "object",
+    "properties": {
+     "refreshToken": {
+      "maxLength": 512,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "LoginRequest": {
+    "required": [
+     "email",
+     "password"
+    ],
+    "type": "object",
+    "properties": {
+     "email": {
+      "type": "string"
+     },
+     "password": {
+      "type": "string"
+     }
+    }
+   },
+   "ForgotPasswordRequest": {
+    "required": [
+     "email"
+    ],
+    "type": "object",
+    "properties": {
+     "email": {
+      "type": "string"
+     }
+    }
+   },
+   "ForgotPasswordResponse": {
+    "type": "object",
+    "properties": {
+     "message": {
+      "type": "string"
+     }
+    }
+   },
+   "CreateAuditReportRequest": {
+    "required": [
+     "summary"
+    ],
+    "type": "object",
+    "properties": {
+     "summary": {
+      "maxLength": 2000,
+      "minLength": 0,
+      "type": "string"
+     },
+     "recommendation": {
+      "maxLength": 500,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "AuditReportResponse": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "inspectionId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "productId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "productTitle": {
+      "type": "string"
+     },
+     "reportNumber": {
+      "type": "string"
+     },
+     "summary": {
+      "type": "string"
+     },
+     "recommendation": {
+      "type": "string"
+     },
+     "issuedAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "AdminSignupRequest": {
+    "required": [
+     "email",
+     "fullName",
+     "password",
+     "phoneNumber"
+    ],
+    "type": "object",
+    "properties": {
+     "email": {
+      "type": "string"
+     },
+     "password": {
+      "maxLength": 72,
+      "minLength": 8,
+      "type": "string"
+     },
+     "fullName": {
+      "maxLength": 100,
+      "minLength": 0,
+      "type": "string"
+     },
+     "phoneNumber": {
+      "maxLength": 20,
+      "minLength": 0,
+      "type": "string"
+     }
+    }
+   },
+   "UpdateUserVerificationRequest": {
+    "required": [
+     "verificationStatus"
+    ],
+    "type": "object",
+    "properties": {
+     "verificationStatus": {
+      "type": "string",
+      "enum": [
+       "UNVERIFIED",
+       "PENDING",
+       "VERIFIED"
+      ]
+     }
+    }
+   },
+   "UpdateUserStatusRequest": {
+    "required": [
+     "status"
+    ],
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "ACTIVE",
+       "SUSPENDED"
+      ]
+     }
+    }
+   },
+   "ModerateProductRequest": {
+    "required": [
+     "status"
+    ],
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "ACTIVE",
+       "INACTIVE",
+       "HIDDEN",
+       "PENDING_APPROVAL"
+      ]
+     }
+    }
+   },
+   "UpdateOrderStatusRequest": {
+    "required": [
+     "status"
+    ],
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "PLACED",
+       "CONFIRMED",
+       "READY_FOR_PICKUP",
+       "IN_PROGRESS",
+       "DELIVERED",
+       "COMPLETED",
+       "CANCELLED",
+       "REJECTED"
+      ]
+     }
+    }
+   },
+   "UpdateLogisticsJobStatusRequest": {
+    "required": [
+     "status"
+    ],
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "PENDING_ACCEPTANCE",
+       "ACCEPTED",
+       "AT_PICKUP",
+       "PICKED_UP",
+       "IN_TRANSIT",
+       "DELIVERED",
+       "FAILED",
+       "CANCELLED"
+      ]
+     }
+    }
+   },
+   "UpdateInspectionStatusRequest": {
+    "required": [
+     "status"
+    ],
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "SCHEDULED",
+       "IN_PROGRESS",
+       "PASSED",
+       "FAILED"
+      ]
+     }
+    }
+   },
+   "UpdateCartItemRequest": {
+    "required": [
+     "quantity"
+    ],
+    "type": "object",
+    "properties": {
+     "quantity": {
+      "minimum": 0.01,
+      "exclusiveMinimum": false,
+      "type": "number"
+     }
+    }
+   },
+   "PublicSellerProfileResponse": {
+    "type": "object",
+    "properties": {
+     "sellerId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "displayName": {
+      "type": "string"
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "BUYER",
+       "SUPPLIER",
+       "FARMER",
+       "INSPECTOR",
+       "DRIVER",
+       "ADMIN"
+      ]
+     },
+     "verificationStatus": {
+      "type": "string",
+      "enum": [
+       "UNVERIFIED",
+       "PENDING",
+       "VERIFIED"
+      ]
+     },
+     "businessName": {
+      "type": "string"
+     },
+     "farmName": {
+      "type": "string"
+     },
+     "farmLocation": {
+      "type": "string"
+     }
+    }
+   },
+   "InspectionChecklist": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "version": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "createdAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "name": {
+      "type": "string"
+     },
+     "targetType": {
+      "type": "string",
+      "enum": [
+       "PRODUCT",
+       "USER",
+       "FARM"
+      ]
+     },
+     "active": {
+      "type": "boolean"
+     }
+    }
+   },
+   "CartResponse": {
+    "type": "object",
+    "properties": {
+     "totalAmount": {
+      "type": "number"
+     },
+     "currency": {
+      "type": "string"
+     },
+     "items": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/CartItemResponse"
+      }
+     }
+    }
+   },
+   "BadgeResponse": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "code": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "description": {
+      "type": "string"
+     },
+     "icon": {
+      "type": "string"
+     }
+    }
+   },
+   "AuditLogResponse": {
+    "type": "object",
+    "properties": {
+     "auditLogId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "actorId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "action": {
+      "type": "string"
+     },
+     "entityType": {
+      "type": "string"
+     },
+     "entityId": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "details": {
+      "type": "string"
+     },
+     "ipAddress": {
+      "type": "string"
+     },
+     "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "Pageable": {
+    "type": "object",
+    "properties": {
+     "page": {
+      "minimum": 0,
+      "type": "integer",
+      "format": "int32"
+     },
+     "size": {
+      "minimum": 1,
+      "type": "integer",
+      "format": "int32"
+     },
+     "sort": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "PageUserProfileResponse": {
+    "type": "object",
+    "properties": {
+     "totalElements": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "totalPages": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "size": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "content": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/UserProfileResponse"
+      }
+     },
+     "number": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "sort": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/SortObject"
+      }
+     },
+     "numberOfElements": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "pageable": {
+      "$ref": "#/components/schemas/PageableObject"
+     },
+     "first": {
+      "type": "boolean"
+     },
+     "last": {
+      "type": "boolean"
+     },
+     "empty": {
+      "type": "boolean"
+     }
+    }
+   },
+   "PageableObject": {
+    "type": "object",
+    "properties": {
+     "offset": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "sort": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/SortObject"
+      }
+     },
+     "unpaged": {
+      "type": "boolean"
+     },
+     "paged": {
+      "type": "boolean"
+     },
+     "pageNumber": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "pageSize": {
+      "type": "integer",
+      "format": "int32"
+     }
+    }
+   },
+   "SortObject": {
+    "type": "object",
+    "properties": {
+     "direction": {
+      "type": "string"
+     },
+     "nullHandling": {
+      "type": "string"
+     },
+     "ascending": {
+      "type": "boolean"
+     },
+     "property": {
+      "type": "string"
+     },
+     "ignoreCase": {
+      "type": "boolean"
+     }
+    }
+   },
+   "AdminReportsResponse": {
+    "type": "object",
+    "properties": {
+     "totalSales": {
+      "type": "number"
+     },
+     "totalOrders": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "completedOrders": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "cancelledOrders": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "averageOrderValue": {
+      "type": "number"
+     },
+     "activeUsers": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "activeDeliveries": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "pendingInspections": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "openDisputes": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "ordersLast30Days": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "integer",
+       "format": "int64"
+      }
+     }
+    }
+   },
+   "PageProductResponse": {
+    "type": "object",
+    "properties": {
+     "totalElements": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "totalPages": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "size": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "content": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/ProductResponse"
+      }
+     },
+     "number": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "sort": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/SortObject"
+      }
+     },
+     "numberOfElements": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "pageable": {
+      "$ref": "#/components/schemas/PageableObject"
+     },
+     "first": {
+      "type": "boolean"
+     },
+     "last": {
+      "type": "boolean"
+     },
+     "empty": {
+      "type": "boolean"
+     }
+    }
+   },
+   "PagePaymentResponse": {
+    "type": "object",
+    "properties": {
+     "totalElements": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "totalPages": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "size": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "content": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/PaymentResponse"
+      }
+     },
+     "number": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "sort": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/SortObject"
+      }
+     },
+     "numberOfElements": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "pageable": {
+      "$ref": "#/components/schemas/PageableObject"
+     },
+     "first": {
+      "type": "boolean"
+     },
+     "last": {
+      "type": "boolean"
+     },
+     "empty": {
+      "type": "boolean"
+     }
+    }
+   },
+   "PageOrderResponse": {
+    "type": "object",
+    "properties": {
+     "totalElements": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "totalPages": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "size": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "content": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/OrderResponse"
+      }
+     },
+     "number": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "sort": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/SortObject"
+      }
+     },
+     "numberOfElements": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "pageable": {
+      "$ref": "#/components/schemas/PageableObject"
+     },
+     "first": {
+      "type": "boolean"
+     },
+     "last": {
+      "type": "boolean"
+     },
+     "empty": {
+      "type": "boolean"
+     }
+    }
+   },
+   "PageLogisticsJobResponse": {
+    "type": "object",
+    "properties": {
+     "totalElements": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "totalPages": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "size": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "content": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/LogisticsJobResponse"
+      }
+     },
+     "number": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "sort": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/SortObject"
+      }
+     },
+     "numberOfElements": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "pageable": {
+      "$ref": "#/components/schemas/PageableObject"
+     },
+     "first": {
+      "type": "boolean"
+     },
+     "last": {
+      "type": "boolean"
+     },
+     "empty": {
+      "type": "boolean"
+     }
+    }
+   },
+   "PageDisputeResponse": {
+    "type": "object",
+    "properties": {
+     "totalElements": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "totalPages": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "size": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "content": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/DisputeResponse"
+      }
+     },
+     "number": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "sort": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/SortObject"
+      }
+     },
+     "numberOfElements": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "pageable": {
+      "$ref": "#/components/schemas/PageableObject"
+     },
+     "first": {
+      "type": "boolean"
+     },
+     "last": {
+      "type": "boolean"
+     },
+     "empty": {
+      "type": "boolean"
+     }
+    }
+   },
+   "AdminDashboardResponse": {
+    "type": "object",
+    "properties": {
+     "users": {
+      "$ref": "#/components/schemas/UserCounts"
+     },
+     "products": {
+      "$ref": "#/components/schemas/ProductCounts"
+     },
+     "orders": {
+      "$ref": "#/components/schemas/OrderMetrics"
+     },
+     "payments": {
+      "$ref": "#/components/schemas/PaymentMetrics"
+     },
+     "logistics": {
+      "$ref": "#/components/schemas/LogisticsMetrics"
+     },
+     "inspections": {
+      "$ref": "#/components/schemas/InspectionCounts"
+     },
+     "disputes": {
+      "$ref": "#/components/schemas/RatingCounts"
+     }
+    }
+   },
+   "InspectionCounts": {
+    "type": "object",
+    "properties": {
+     "totalInspections": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "pendingInspections": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "passedInspections": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "failedInspections": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "byStatus": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "integer",
+       "format": "int64"
+      }
+     }
+    }
+   },
+   "LogisticsMetrics": {
+    "type": "object",
+    "properties": {
+     "totalJobs": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "activeDeliveries": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "failedDeliveries": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "pendingAcceptance": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "byStatus": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "integer",
+       "format": "int64"
+      }
+     }
+    }
+   },
+   "OrderMetrics": {
+    "type": "object",
+    "properties": {
+     "totalOrders": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "completedOrders": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "activeOrders": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "cancelledOrders": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "salesTotal": {
+      "type": "number"
+     },
+     "byStatus": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "integer",
+       "format": "int64"
+      }
+     }
+    }
+   },
+   "PaymentMetrics": {
+    "type": "object",
+    "properties": {
+     "totalPayments": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "pendingPayments": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "verifiedPayments": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "failedPayments": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "refundedPayments": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "byStatus": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "integer",
+       "format": "int64"
+      }
+     }
+    }
+   },
+   "ProductCounts": {
+    "type": "object",
+    "properties": {
+     "totalProducts": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "activeProducts": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "hiddenProducts": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "byStatus": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "integer",
+       "format": "int64"
+      }
+     }
+    }
+   },
+   "RatingCounts": {
+    "type": "object",
+    "properties": {
+     "openDisputes": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "escalatedDisputes": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "resolvedDisputes": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "byStatus": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "integer",
+       "format": "int64"
+      }
+     }
+    }
+   },
+   "UserCounts": {
+    "type": "object",
+    "properties": {
+     "totalUsers": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "activeUsers": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "suspendedUsers": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "byRole": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "integer",
+       "format": "int64"
+      }
+     },
+     "availableDrivers": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "onJobDrivers": {
+      "type": "integer",
+      "format": "int64"
+     }
+    }
+   }
+  }
+ }
+}

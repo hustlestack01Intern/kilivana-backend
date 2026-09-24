@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backend system for the Kilivana App Platform</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    body { margin: 0; background: #f8fafc; }
+    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    .swagger-ui .topbar { display: none; }
+    .title-banner { font-family: sans-serif; padding: 18px 24px; background: #0b3d2e; color: #fff; }
+    .title-banner h1 { margin: 0; font-size: 20px; }
+    .title-banner p { margin: 4px 0 0; font-size: 13px; opacity: .85; }
+    #swagger-ui { padding-bottom: 40px; }
+  </style>
+</head>
+<body>
+  <div class="title-banner">
+    <h1>Backend system for the Kilivana App Platform</h1>
+    <p>Agricultural marketplace and logistics backend &mdash; all 96 paths / 113 operations under /api/v1</p>
+  </div>
+  <div id="swagger-ui"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = function () {
+      window.ui = SwaggerUIBundle({
+        url: "spec/spec.json",
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+        layout: "BaseLayout",
+        requestInterceptor: function (req) {
+          try {
+            var host = new URL(req.url).hostname;
+            if (host.endsWith(".ngrok-free.dev") || host.endsWith(".ngrok-free.app")) {
+              req.headers["ngrok-skip-browser-warning"] = "true";
+            }
+          } catch (e) {}
+          return req;
+        }
+      });
+    };
+  </script>
+</body>
+</html>
