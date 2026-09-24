@@ -1,0 +1,109 @@
+spring:
+  application:
+    name: kilivana-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/kilivana}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:1s}
+      timeout: ${REDIS_COMMAND_TIMEOUT:1s}
+  cache:
+    type: redis
+  flyway:
+    enabled: true
+  jackson:
+    default-property-inclusion: non_null
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:true}
+  servlet:
+    multipart:
+      max-file-size: ${MEDIA_MAX_FILE_SIZE:5MB}
+      max-request-size: ${MEDIA_MAX_REQUEST_SIZE:6MB}
+      file-size-threshold: 0
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:NONE}
+  servlet:
+    context-path: /
+    session:
+      cookie:
+        secure: ${SESSION_COOKIE_SECURE:true}
+        http-only: true
+        same-site: strict
+
+kilivana:
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:kilivana-backend}
+      audience: ${JWT_AUDIENCE:kilivana-api}
+      access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:15}
+      refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS:14}
+      secret: ${JWT_SECRET:}
+      refresh-cleanup-ms: ${JWT_REFRESH_CLEANUP_MS:3600000}
+    admin:
+      bootstrap-key: ${ADMIN_BOOTSTRAP_KEY:}
+    password-reset:
+      token-ttl: ${PASSWORD_RESET_TOKEN_TTL:15m}
+      frontend-url: ${PASSWORD_RESET_URL:http://localhost:3000/reset-password}
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+      allow-credentials: ${CORS_ALLOW_CREDENTIALS:false}
+    proxy:
+      trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+      trusted-proxies: ${TRUSTED_PROXIES:}
+    docs:
+      public: ${OPENAPI_PUBLIC:false}
+    rate-limit:
+      enabled: ${RATE_LIMIT_ENABLED:true}
+      backend: ${RATE_LIMIT_BACKEND:redis}
+      requests-per-minute: ${RATE_LIMIT_REQUESTS_PER_MINUTE:30}
+      login-requests-per-minute: ${RATE_LIMIT_LOGIN_PER_MINUTE:5}
+      registration-requests-per-minute: ${RATE_LIMIT_REGISTER_PER_MINUTE:5}
+      forgot-password-requests-per-minute: ${RATE_LIMIT_FORGOT_PER_MINUTE:3}
+      admin-bootstrap-requests-per-minute: ${RATE_LIMIT_ADMIN_BOOTSTRAP_PER_MINUTE:3}
+      max-local-keys: ${RATE_LIMIT_MAX_LOCAL_KEYS:10000}
+  media:
+    root-dir: ${MEDIA_ROOT:./uploads}
+    max-file-size-bytes: ${MEDIA_MAX_FILE_BYTES:5242880}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: ${OPENAPI_ENABLED:false}
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: ${SWAGGER_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%X{requestId}] %-5level %logger{36} - %msg%n"
