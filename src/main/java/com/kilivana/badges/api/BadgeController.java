@@ -40,6 +40,6 @@ public class BadgeController {
 
     @PostMapping("/award")
     public ResponseEntity<UserBadgeResponse> award(@Valid @RequestBody AwardBadgeRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(badgeService.award(request));
+        return ResponseEntity.ok().body(badgeService.award(request));
     }
 }

@@ -62,7 +62,7 @@ public class ProductController {
 
     @PostMapping
     public ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(productService.create(request));
+        return ResponseEntity.ok().body(productService.create(request));
     }
 
     @PutMapping("/{productId}")
@@ -75,7 +75,7 @@ public class ProductController {
     @DeleteMapping("/{productId}")
     public ResponseEntity<Void> unlist(@PathVariable UUID productId) {
         productService.unlist(productId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/{productId}/status")
@@ -89,7 +89,7 @@ public class ProductController {
     public ResponseEntity<ProductImageResponse> registerImage(
             @PathVariable UUID productId,
             @Valid @RequestBody RegisterProductImageRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
+        return ResponseEntity.ok()
                 .body(productService.registerImage(productId, request.fileName(), request.contentType(), request.sizeBytes(), request.url()));
     }
 
@@ -101,12 +101,12 @@ public class ProductController {
     @PostMapping("/{productId}/save")
     public ResponseEntity<Void> save(@PathVariable UUID productId) {
         productService.save(productId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{productId}/save")
     public ResponseEntity<Void> unsave(@PathVariable UUID productId) {
         productService.unsave(productId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 }

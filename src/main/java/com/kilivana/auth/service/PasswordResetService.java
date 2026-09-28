@@ -50,21 +50,28 @@ public class PasswordResetService {
     @Transactional
     public ForgotPasswordResponse requestReset(String email) {
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
-        userRepository.findByEmailIgnoreCase(normalizedEmail).ifPresent(user -> {
+        String rawToken = userRepository.findByEmailIgnoreCase(normalizedEmail).map(user -> {
             resetTokenRepository.findByUserId(user.getId()).forEach(PasswordResetToken::markUsed);
-            String rawToken = tokenService.generate();
+            String candidate = tokenService.generate();
             OffsetDateTime expiresAt = OffsetDateTime.now(ZoneOffset.UTC).plus(properties.tokenTtl());
             PasswordResetToken resetToken = new PasswordResetToken(
                     user,
-                    tokenService.hash(rawToken),
+                    tokenService.hash(candidate),
                     expiresAt);
             resetTokenRepository.save(resetToken);
+            if (properties.simulateDelivery()) {
+                return candidate;
+            }
             try {
-                mailSender.sendResetLink(user.getEmail(), rawToken);
+                mailSender.sendResetLink(user.getEmail(), candidate);
             } catch (RuntimeException exception) {
                 resetToken.markUsed();
             }
-        });
+            return null;
+        }).orElse(null);
+        if (properties.simulateDelivery() && rawToken != null) {
+            return ForgotPasswordResponse.devToken(rawToken);
+        }
         return ForgotPasswordResponse.generic();
     }
 

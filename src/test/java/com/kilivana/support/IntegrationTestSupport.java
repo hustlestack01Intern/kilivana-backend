@@ -144,7 +144,7 @@ public abstract class IntegrationTestSupport {
         return readBody(mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(request)))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andReturn(), AuthResponse.class);
     }
 
@@ -190,14 +190,14 @@ public abstract class IntegrationTestSupport {
         mockMvc.perform(post("/api/v1/auth/logout")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(new LogoutRequest(refreshToken))))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk());
     }
 
     protected ProductResponse createProduct(String accessToken, CreateProductRequest request) throws Exception {
         return readBody(mockMvc.perform(authorized(post("/api/v1/products"), accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(request)))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andReturn(), ProductResponse.class);
     }
 
@@ -212,7 +212,7 @@ public abstract class IntegrationTestSupport {
         return readBody(mockMvc.perform(authorized(post("/api/v1/orders"), accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(request)))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andReturn(), OrderResponse.class);
     }
 
@@ -234,7 +234,7 @@ public abstract class IntegrationTestSupport {
         return readBody(mockMvc.perform(authorized(post("/api/v1/payments"), accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(request)))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andReturn(), PaymentResponse.class);
     }
 

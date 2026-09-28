@@ -28,7 +28,7 @@ class AdminFlowIntegrationTest extends IntegrationTestSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(
                                 new AdminSignupRequest(email, "secretPass1", "System Root", "+254700000099"))))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andReturn(), AuthResponse.class);
     }
 

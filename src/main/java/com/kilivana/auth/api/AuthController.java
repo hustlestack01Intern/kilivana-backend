@@ -33,7 +33,7 @@ public class AuthController {
 
     @PostMapping({"/signup", "/register"})
     public ResponseEntity<AuthResponse> signup(@Valid @RequestBody SignupRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
+        return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(authService.signup(request));
     }
@@ -55,7 +55,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
         authService.logout(request.refreshToken());
-        return ResponseEntity.noContent()
+        return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .build();
     }
@@ -68,7 +68,7 @@ public class AuthController {
     @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         passwordResetService.reset(request);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/me")

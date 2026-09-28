@@ -1,0 +1,116 @@
+KILIVANA BACKEND - AUTHENTICATION SCHEMAS FOR ANDROID INTEGRATION
+================================================================
+
+Based on OpenAPI spec.json from Kilivana Backend (Java Spring Boot 3.3.x)
+
+------------------------------------------------------------
+1. LOGIN REQUEST (POST /api/v1/auth/login)
+------------------------------------------------------------
+{
+  "type": "object",
+  "required": ["email", "password"],
+  "properties": {
+    "email": {"type": "string"},           // User's email address
+    "password": {"type": "string"}          // User's password
+  }
+}
+
+Android Kotlin/Java usage:
+----------------------
+val loginRequest = LoginRequest(email = "user@example.com", password = "password123")
+val response = apiService.login(loginRequest)
+
+
+------------------------------------------------------------
+2. LOGIN RESPONSE (AuthResponse) (POST /api/v1/auth/login)
+------------------------------------------------------------
+{
+  "type": "object",
+  "properties": {
+    "userId": {"type": "string", "format": "uuid"},       // User's UUID
+    "email": {"type": "string"},                         // User's email
+    "fullName": {"type": "string"},                      // User's full name
+    "role": {
+      "type": "string",
+      "enum": ["BUYER", "SUPPLIER", "FARMER", "INSPECTOR", "DRIVER", "ADMIN"]
+    },                       // User's role
+    "accessToken": {"type": "string"},                   // JWT access token (15 min TTL)
+    "refreshToken": {"type": "string"},                  // JWT refresh token (14 days TTL)
+    "refreshTokenExpiresAt": {"type": "string", "format": "date-time"}  // Expiry timestamp
+  }
+}
+
+Android Kotlin/Java usage:
+----------------------
+// Extract tokens from response
+val userId = authResponse.userId
+val accessToken = authResponse.accessToken
+val refreshToken = authResponse.refreshToken
+val expiresAt = authResponse.refreshTokenExpiresAt
+
+// Store token for subsequent API calls
+authRepository.saveToken(accessToken, refreshToken)
+
+
+------------------------------------------------------------
+3. REFRESH TOKEN REQUEST (POST /api/v1/auth/refresh)
+------------------------------------------------------------
+{
+  "type": "object",
+  "required": ["refreshToken"],
+  "properties": {
+    "refreshToken": {"maxLength": 512, "minLength": 0, "type": "string"}
+  }
+}
+
+Android Kotlin/Java usage:
+----------------------
+val refreshRequest = RefreshTokenRequest(refreshToken = storedRefreshToken)
+val authResponse = apiService.refresh(refreshRequest)
+
+
+------------------------------------------------------------
+4. LOGOUT REQUEST (POST /api/v1/auth/logout)
+------------------------------------------------------------
+{
+  "type": "object",
+  "required": ["refreshToken"],
+  "properties": {
+    "refreshToken": {"maxLength": 512, "minLength": 0, "type": "string"}
+  }
+}
+
+Android Kotlin/Java usage:
+----------------------
+val logoutRequest = LogoutRequest(refreshToken = storedRefreshToken)
+apiService.logout(logoutRequest)
+
+
+------------------------------------------------------------
+QUICK START FOR ANDROID DEVELOPERS
+------------------------------------------------------------
+
+1. POST /api/v1/auth/login
+   - Body: { "email": "user@example.com", "password": "secret" }
+   - Returns: userId, role, accessToken, refreshToken, refreshTokenExpiresAt
+
+2. Save the accessToken in SharedPreferences or SecurePreferences
+3. Add Bearer token header: "Authorization: Bearer <accessToken>"
+4. When accessToken expires (15 min), use refreshToken to get new accessToken
+5. POST /api/v1/auth/logout to invalidate refreshToken
+
+------------------------------------------------------------
+FILES FOR SHARING
+------------------------------------------------------------
+
+- Full spec.json: /Users/mac/Desktop/KILVANA /docs/spec/spec.json
+- This auth schemas summary: /Users/mac/Desktop/KILVANA /auth-schemas-for-android.txt
+
+OR share these four schemas directly via:
+- Email/Message
+- Code repository (Gist, GitHub)
+- JSON file attachment
+- Chat/Slack/Teams message
+
+------------------------------------------------------------
+END OF DOCUMENT

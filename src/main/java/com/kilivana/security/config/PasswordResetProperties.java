@@ -4,7 +4,10 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "kilivana.security.password-reset")
-public record PasswordResetProperties(Duration tokenTtl, String frontendUrl) {
+public record PasswordResetProperties(
+        Duration tokenTtl,
+        String frontendUrl,
+        boolean simulateDelivery) {
 
     public PasswordResetProperties {
         tokenTtl = tokenTtl == null ? Duration.ofMinutes(15) : tokenTtl;

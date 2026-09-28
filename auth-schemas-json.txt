@@ -1,0 +1,48 @@
+KILIVANA AUTH SCHEMAS - JSON SNAPSHOT
+======================================
+
+Copy-paste these four schemas for Android integration:
+
+1. LOGIN REQUEST:
+{"type":"object","required":["email","password"],"properties":{"email":{"type":"string"},"password":{"type":"string"}}}
+
+2. AUTH RESPONSE (LOGIN RESPONSE):
+{"type":"object","properties":{"userId":{"type":"string","format":"uuid"},"email":{"type":"string"},"fullName":{"type":"string"},"role":{"type":"string","enum":["BUYER","SUPPLIER","FARMER","INSPECTOR","DRIVER","ADMIN"]},"accessToken":{"type":"string"},"refreshToken":{"type":"string"},"refreshTokenExpiresAt":{"type":"string","format":"date-time"}}}
+
+3. REFRESH TOKEN REQUEST:
+{"type":"object","required":["refreshToken"],"properties":{"refreshToken":{"maxLength":512,"minLength":0,"type":"string"}}}
+
+4. LOGOUT REQUEST:
+{"type":"object","required":["refreshToken"],"properties":{"refreshToken":{"maxLength":512,"minLength":0,"type":"string"}}}
+
+======================================
+API ENDPOINTS:
+======================================
+POST /api/v1/auth/login        -> LoginRequest -> AuthResponse
+POST /api/v1/auth/refresh      -> RefreshTokenRequest -> AuthResponse  
+POST /api/v1/auth/logout       -> LogoutRequest -> 200 OK
+
+All tokens are JWT (HS256), access token TTL: 15 min, refresh token TTL: 14 days
+API Base: /api/v1 (local: http://localhost:8080, tunnel via ngrok)
+
+======================================
+ANDROID USAGE EXAMPLE (Kotlin):
+======================================
+
+// 1. Login
+val loginReq = LoginRequest(email="user@test.com", password="pass123")
+val loginRes = apiService.login(loginReq) // returns AuthResponse
+authRepository.saveToken(loginRes.accessToken, loginRes.refreshToken)
+
+// 2. Use token in headers
+apiService.getUserProfile(
+    header("Authorization") "Bearer ${authRepository.accessToken}"
+)
+
+// 3. Refresh when 401
+val refreshRes = apiService.refresh(RefreshTokenRequest(refreshToken=authRepository.refreshToken))
+authRepository.saveToken(refreshRes.accessToken, refreshRes.refreshToken)
+
+// 4. Logout
+apiService.logout(LogoutRequest(refreshToken=authRepository.refreshToken))
+authRepository.clearTokens()

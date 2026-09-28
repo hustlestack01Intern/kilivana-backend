@@ -25,7 +25,7 @@ public class DisputeController {
 
     @PostMapping
     public ResponseEntity<DisputeResponse> create(@Valid @RequestBody CreateDisputeRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(disputeService.create(request));
+        return ResponseEntity.ok().body(disputeService.create(request));
     }
 
     @GetMapping("/mine")

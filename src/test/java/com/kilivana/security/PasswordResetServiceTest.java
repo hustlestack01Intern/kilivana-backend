@@ -57,7 +57,7 @@ class PasswordResetServiceTest {
     @BeforeEach
     void setUp() {
         tokenService = new TokenService();
-        properties = new PasswordResetProperties(Duration.ofMinutes(15), "https://example.test/reset");
+        properties = new PasswordResetProperties(Duration.ofMinutes(15), "https://example.test/reset", false);
         passwordResetService = new PasswordResetService(
                 userRepository,
                 resetTokenRepository,

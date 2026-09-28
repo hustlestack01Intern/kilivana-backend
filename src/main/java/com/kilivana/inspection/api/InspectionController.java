@@ -28,7 +28,7 @@ public class InspectionController {
 
     @PostMapping
     public ResponseEntity<InspectionResponse> create(@Valid @RequestBody CreateInspectionRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(inspectionService.create(request));
+        return ResponseEntity.ok().body(inspectionService.create(request));
     }
 
     @GetMapping

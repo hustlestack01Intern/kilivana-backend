@@ -29,7 +29,7 @@ public class OrderController {
 
     @PostMapping("/cart")
     public ResponseEntity<CartItemResponse> addToCart(@Valid @RequestBody AddToCartRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.addToCart(request));
+        return ResponseEntity.ok().body(orderService.addToCart(request));
     }
 
     @GetMapping("/cart/items")
@@ -47,12 +47,12 @@ public class OrderController {
     @DeleteMapping("/cart/items/{cartItemId}")
     public ResponseEntity<Void> removeCartItem(@PathVariable UUID cartItemId) {
         orderService.removeCartItem(cartItemId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/cart/checkout")
     public ResponseEntity<CustomerOrderResponse> checkout(@Valid @RequestBody CheckoutRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.checkout(request));
+        return ResponseEntity.ok().body(orderService.checkout(request));
     }
 
     @PostMapping("/checkout/validate")
@@ -63,7 +63,7 @@ public class OrderController {
 
     @PostMapping("/orders")
     public ResponseEntity<OrderResponse> create(@Valid @RequestBody CreateOrderRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.create(request));
+        return ResponseEntity.ok().body(orderService.create(request));
     }
 
     @GetMapping("/orders/mine")

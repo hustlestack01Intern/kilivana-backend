@@ -29,7 +29,7 @@ public class VisitPhotoController {
     public ResponseEntity<VisitPhotoResponse> upload(
             @PathVariable UUID inspectionId,
             @RequestParam("file") MultipartFile file) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(visitPhotoService.addPhoto(inspectionId, file));
+        return ResponseEntity.ok().body(visitPhotoService.addPhoto(inspectionId, file));
     }
 
     @GetMapping("/inspections/{inspectionId}/photos")

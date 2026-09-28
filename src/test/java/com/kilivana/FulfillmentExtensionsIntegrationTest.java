@@ -60,7 +60,7 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
                                         "jane@example.com",
                                         "Inquiry",
                                         "How does inspection work?"))))
-                        .andExpect(status().isCreated())
+                        .andExpect(status().isOk())
                         .andReturn(), ContactMessageResponse.class);
 
         assertThat(message.status()).isEqualTo(ContactMessageStatus.OPEN);
@@ -112,7 +112,7 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
                 mockMvc.perform(authorized(post("/api/v1/site-visits"), farmer.accessToken())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsBytes(new CreateSiteVisitRequest(listing.productId()))))
-                        .andExpect(status().isCreated())
+                        .andExpect(status().isOk())
                         .andReturn(), SiteVisitResponse.class);
         assertThat(requested.status()).isEqualTo(SiteVisitStatus.REQUESTED);
 
@@ -167,7 +167,7 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
                                         listing.productId(),
                                         null,
                                         OffsetDateTime.now().plusDays(1)))))
-                        .andExpect(status().isCreated())
+                        .andExpect(status().isOk())
                         .andReturn(), InspectionResponse.class);
 
         mockMvc.perform(authorized(patch("/api/v1/inspections/{id}/status", scheduled.id()), inspector.accessToken())
@@ -188,7 +188,7 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
                                 .content(objectMapper.writeValueAsBytes(new CreateAuditReportRequest(
                                         "Inspection passed and produce verified",
                                         "Re-certify annually"))))
-                        .andExpect(status().isCreated())
+                        .andExpect(status().isOk())
                         .andReturn(), AuditReportResponse.class);
 
         assertThat(report.reportNumber()).startsWith("AR-");
@@ -240,7 +240,7 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
                                         OffsetDateTime.now().plusDays(1),
                                         pickup.addressId(),
                                         delivery.addressId()))))
-                        .andExpect(status().isCreated())
+                        .andExpect(status().isOk())
                         .andReturn(), LogisticsJobResponse.class);
         assertThat(created.status()).isEqualTo(LogisticsJobStatus.PENDING_ACCEPTANCE);
 
@@ -253,7 +253,7 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
                                         39.9093,
                                         "Kilifi Depot",
                                         "Package awaiting driver pickup"))))
-                        .andExpect(status().isCreated())
+                        .andExpect(status().isOk())
                         .andReturn(), TrackingEventResponse.class);
         assertThat(event.status()).isEqualTo(LogisticsJobStatus.PENDING_ACCEPTANCE);
         assertThat(event.locationName()).isEqualTo("Kilifi Depot");
@@ -321,7 +321,7 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
         return readBody(mockMvc.perform(authorized(post("/api/v1/addresses"), accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(request)))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andReturn(), AddressResponse.class);
     }
 
@@ -331,7 +331,7 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(
                                 new com.kilivana.admin.api.AdminSignupRequest(email, "secretPass1", "Root", "+254700000099"))))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andReturn(), AuthResponse.class);
     }
 

@@ -26,7 +26,7 @@ public class LogisticsController {
 
     @PostMapping("/jobs")
     public ResponseEntity<LogisticsJobResponse> create(@Valid @RequestBody CreateLogisticsJobRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(logisticsService.create(request));
+        return ResponseEntity.ok().body(logisticsService.create(request));
     }
 
     @GetMapping("/jobs/mine")
@@ -67,7 +67,7 @@ public class LogisticsController {
     public ResponseEntity<TrackingEventResponse> track(
             @PathVariable UUID jobId,
             @Valid @RequestBody TrackingEventRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(logisticsService.track(jobId, request));
+        return ResponseEntity.ok().body(logisticsService.track(jobId, request));
     }
 
     @GetMapping("/jobs/{jobId}/tracking")

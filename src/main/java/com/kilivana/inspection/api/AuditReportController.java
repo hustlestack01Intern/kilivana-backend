@@ -26,7 +26,7 @@ public class AuditReportController {
     public ResponseEntity<AuditReportResponse> create(
             @PathVariable UUID inspectionId,
             @Valid @RequestBody CreateAuditReportRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(auditReportService.create(inspectionId, request));
+        return ResponseEntity.ok().body(auditReportService.create(inspectionId, request));
     }
 
     @GetMapping("/{reportId}")

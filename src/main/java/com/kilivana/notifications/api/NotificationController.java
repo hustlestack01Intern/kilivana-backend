@@ -53,6 +53,6 @@ public class NotificationController {
     @DeleteMapping("/{notificationId}")
     public ResponseEntity<Void> delete(@PathVariable UUID notificationId) {
         notificationService.delete(notificationId);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        return ResponseEntity.ok().build();
     }
 }

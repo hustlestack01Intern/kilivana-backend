@@ -28,7 +28,7 @@ public class ContactMessageController {
 
     @PostMapping
     public ResponseEntity<ContactMessageResponse> submit(@Valid @RequestBody ContactMessageRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(contactMessageService.submit(request));
+        return ResponseEntity.ok().body(contactMessageService.submit(request));
     }
 
     @GetMapping

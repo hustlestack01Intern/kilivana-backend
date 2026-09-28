@@ -25,7 +25,7 @@ public class PaymentController {
 
     @PostMapping
     public ResponseEntity<PaymentResponse> create(@Valid @RequestBody CreatePaymentRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(paymentService.create(request));
+        return ResponseEntity.ok().body(paymentService.create(request));
     }
 
     @PostMapping("/verify")

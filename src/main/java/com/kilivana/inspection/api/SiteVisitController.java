@@ -25,7 +25,7 @@ public class SiteVisitController {
 
     @PostMapping
     public ResponseEntity<SiteVisitResponse> create(@Valid @RequestBody CreateSiteVisitRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(siteVisitService.create(request));
+        return ResponseEntity.ok().body(siteVisitService.create(request));
     }
 
     @GetMapping

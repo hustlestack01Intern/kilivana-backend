@@ -25,6 +25,6 @@ public class AdminSignupController {
     public ResponseEntity<AuthResponse> signup(
             @RequestHeader(value = AdminSignupService.BOOTSTRAP_KEY_HEADER, required = false) String bootstrapKey,
             @Valid @RequestBody AdminSignupRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(adminSignupService.signup(request, bootstrapKey));
+        return ResponseEntity.ok().body(adminSignupService.signup(request, bootstrapKey));
     }
 }

@@ -60,7 +60,7 @@ class TrustAndFulfillmentFlowIntegrationTest extends IntegrationTestSupport {
                                         farmer.userId(),
                                         "CERTIFIED_FARM",
                                         "Farm verified on site"))))
-                        .andExpect(status().isCreated())
+                        .andExpect(status().isOk())
                         .andReturn(), UserBadgeResponse.class);
 
         assertThat(awarded.badgeCode()).isEqualTo("CERTIFIED_FARM");
@@ -106,7 +106,7 @@ class TrustAndFulfillmentFlowIntegrationTest extends IntegrationTestSupport {
                                         listing.productId(),
                                         null,
                                         OffsetDateTime.now().plusDays(1)))))
-                        .andExpect(status().isCreated())
+                        .andExpect(status().isOk())
                         .andReturn(), InspectionResponse.class);
 
         InspectionResponse inProgress = updateInspectionStatus(
@@ -186,7 +186,7 @@ class TrustAndFulfillmentFlowIntegrationTest extends IntegrationTestSupport {
                                         OffsetDateTime.now().plusDays(2),
                                         pickup.addressId(),
                                         delivery.addressId()))))
-                        .andExpect(status().isCreated())
+                        .andExpect(status().isOk())
                         .andReturn(), LogisticsJobResponse.class);
         assertThat(created.status()).isEqualTo(LogisticsJobStatus.PENDING_ACCEPTANCE);
 
@@ -254,7 +254,7 @@ class TrustAndFulfillmentFlowIntegrationTest extends IntegrationTestSupport {
         return readBody(mockMvc.perform(authorized(post("/api/v1/addresses"), accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(request)))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andReturn(), AddressResponse.class);
     }
 

@@ -32,7 +32,7 @@ public class AddressController {
 
     @PostMapping
     public ResponseEntity<AddressResponse> create(@Valid @RequestBody CreateAddressRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(addressService.create(request));
+        return ResponseEntity.ok().body(addressService.create(request));
     }
 
     @PutMapping("/{addressId}")
@@ -45,6 +45,6 @@ public class AddressController {
     @DeleteMapping("/{addressId}")
     public ResponseEntity<Void> delete(@PathVariable UUID addressId) {
         addressService.delete(addressId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 }
