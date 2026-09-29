@@ -2,6 +2,7 @@ FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache curl
 COPY mvnw .
+RUN chmod +x ./mvnw
 COPY .mvn .mvn
 COPY pom.xml .
 RUN ./mvnw dependency:go-offline -q
@@ -18,3 +19,4 @@ USER appuser
 EXPOSE 8080
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+
