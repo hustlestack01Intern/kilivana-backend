@@ -1,6 +1,7 @@
 package com.kilivana.users.api;
 
 import com.kilivana.users.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -50,6 +51,7 @@ public class UserController {
         return ResponseEntity.ok(userService.updateStatus(userId, request));
     }
 
+    @Operation(summary = "Update user verification (Admin only)", description = "An authenticated Admin may set verificationStatus to VERIFIED to approve an Inspector. PENDING and UNVERIFIED revoke Inspector privileges on subsequent requests, including requests using existing access tokens.")
     @PatchMapping("/{userId}/verification")
     public ResponseEntity<UserProfileResponse> updateVerification(
             @PathVariable UUID userId,

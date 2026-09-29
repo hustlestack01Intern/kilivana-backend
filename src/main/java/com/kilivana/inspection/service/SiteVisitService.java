@@ -61,7 +61,7 @@ public class SiteVisitService {
     @Transactional
     public SiteVisitResponse schedule(UUID visitId, ScheduleSiteVisitRequest request) {
         AuthenticatedUser actor = currentUser.required();
-        if (actor.getRole() != UserRole.INSPECTOR) {
+        if (!actor.isVerifiedInspector()) {
             throw new UnauthorizedOperationException("Only inspectors can schedule site visits");
         }
         SiteVisit visit = requireVisit(visitId);
@@ -72,7 +72,7 @@ public class SiteVisitService {
     @Transactional
     public SiteVisitResponse complete(UUID visitId) {
         AuthenticatedUser actor = currentUser.required();
-        if (actor.getRole() != UserRole.INSPECTOR) {
+        if (!actor.isVerifiedInspector()) {
             throw new UnauthorizedOperationException("Only inspectors can complete site visits");
         }
         SiteVisit visit = requireVisit(visitId);
@@ -83,7 +83,7 @@ public class SiteVisitService {
     @Transactional
     public SiteVisitResponse reject(UUID visitId) {
         AuthenticatedUser actor = currentUser.required();
-        if (actor.getRole() != UserRole.INSPECTOR && actor.getRole() != UserRole.FARMER) {
+        if (!actor.isVerifiedInspector() && actor.getRole() != UserRole.FARMER) {
             throw new UnauthorizedOperationException("Only inspectors or the requesting farmer can reject a site visit");
         }
         SiteVisit visit = requireVisit(visitId);
@@ -99,7 +99,7 @@ public class SiteVisitService {
         if (actor.getRole() == UserRole.FARMER) {
             return siteVisitRepository.findByFarmerId(actor.getId()).stream().map(this::toResponse).toList();
         }
-        if (actor.getRole() == UserRole.INSPECTOR) {
+        if (actor.isVerifiedInspector()) {
             return siteVisitRepository.findAllWithDetails().stream().map(this::toResponse).toList();
         }
         throw new UnauthorizedOperationException("Only farmers and inspectors can view site visits");
@@ -108,7 +108,7 @@ public class SiteVisitService {
     public SiteVisitResponse getById(UUID visitId) {
         AuthenticatedUser actor = currentUser.required();
         SiteVisit visit = requireVisit(visitId);
-        if (actor.getRole() != UserRole.INSPECTOR && !visit.getFarmer().getId().equals(actor.getId())) {
+        if (!actor.isVerifiedInspector() && !visit.getFarmer().getId().equals(actor.getId())) {
             throw new UnauthorizedOperationException("You cannot view this site visit");
         }
         return toResponse(visit);

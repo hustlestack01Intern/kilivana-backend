@@ -60,7 +60,7 @@ public class InspectionService {
     @Transactional
     public InspectionResponse create(CreateInspectionRequest request) {
         AuthenticatedUser actor = currentUser.required();
-        if (actor.getRole() != UserRole.INSPECTOR) {
+        if (!actor.isVerifiedInspector()) {
             throw new UnauthorizedOperationException("Only inspectors can schedule inspections");
         }
 
@@ -88,13 +88,13 @@ public class InspectionService {
         if (productId != null) {
             Product product = productRepository.findWithOwnerById(productId)
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
-            if (product.getOwner().getId().equals(actor.getId()) || actor.getRole() == UserRole.INSPECTOR) {
+            if (product.getOwner().getId().equals(actor.getId()) || actor.isVerifiedInspector()) {
                 return inspectionRepository.findByProductId(productId).stream().map(this::toResponse).toList();
             }
             throw new UnauthorizedOperationException("You cannot view inspections for this product");
         }
 
-        if (actor.getRole() == UserRole.INSPECTOR) {
+        if (actor.isVerifiedInspector()) {
             return inspectionRepository.findByInspectorId(actor.getId()).stream().map(this::toResponse).toList();
         }
         if (actor.getRole() == UserRole.SUPPLIER || actor.getRole() == UserRole.FARMER) {
@@ -107,7 +107,7 @@ public class InspectionService {
         AuthenticatedUser actor = currentUser.required();
         Inspection inspection = inspectionRepository.findWithActorsById(inspectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inspection not found"));
-        if (actor.getRole() != UserRole.INSPECTOR
+        if (!actor.isVerifiedInspector()
                 && !inspection.getProduct().getOwner().getId().equals(actor.getId())) {
             throw new UnauthorizedOperationException("You cannot view this inspection");
         }
@@ -117,7 +117,7 @@ public class InspectionService {
     @Transactional
     public InspectionResponse updateStatus(UUID inspectionId, UpdateInspectionStatusRequest request) {
         AuthenticatedUser actor = currentUser.required();
-        if (actor.getRole() != UserRole.INSPECTOR) {
+        if (!actor.isVerifiedInspector()) {
             throw new UnauthorizedOperationException("Only inspectors can record inspection results");
         }
         Inspection inspection = requireOwned(inspectionId, actor);
@@ -134,7 +134,7 @@ public class InspectionService {
     @Transactional
     public InspectionResponse submitResult(UUID inspectionId, SubmitInspectionResultRequest request) {
         AuthenticatedUser actor = currentUser.required();
-        if (actor.getRole() != UserRole.INSPECTOR) {
+        if (!actor.isVerifiedInspector()) {
             throw new UnauthorizedOperationException("Only inspectors can record inspection results");
         }
         Inspection inspection = requireOwned(inspectionId, actor);

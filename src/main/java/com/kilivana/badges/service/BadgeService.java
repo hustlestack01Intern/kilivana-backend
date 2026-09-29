@@ -13,7 +13,6 @@ import com.kilivana.common.exception.UnauthorizedOperationException;
 import com.kilivana.security.AuthenticatedUser;
 import com.kilivana.security.CurrentUser;
 import com.kilivana.users.domain.User;
-import com.kilivana.users.domain.UserRole;
 import com.kilivana.users.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import java.util.List;
@@ -56,7 +55,7 @@ public class BadgeService {
     @Transactional
     public UserBadgeResponse award(AwardBadgeRequest request) {
         AuthenticatedUser actor = currentUser.required();
-        if (actor.getRole() != UserRole.INSPECTOR) {
+        if (!actor.isVerifiedInspector()) {
             throw new UnauthorizedOperationException("Only inspectors can award badges");
         }
 

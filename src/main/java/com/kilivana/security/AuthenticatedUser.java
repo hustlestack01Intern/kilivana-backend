@@ -1,6 +1,7 @@
 package com.kilivana.security;
 
 import com.kilivana.users.domain.UserRole;
+import com.kilivana.users.domain.VerificationStatus;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -14,12 +15,18 @@ public class AuthenticatedUser implements UserDetails {
     private final String email;
     private final String passwordHash;
     private final UserRole role;
+    private final VerificationStatus verificationStatus;
 
     public AuthenticatedUser(UUID id, String email, String passwordHash, UserRole role) {
+        this(id, email, passwordHash, role, VerificationStatus.UNVERIFIED);
+    }
+
+    public AuthenticatedUser(UUID id, String email, String passwordHash, UserRole role, VerificationStatus verificationStatus) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
         this.role = role;
+        this.verificationStatus = verificationStatus;
     }
 
     public UUID getId() {
@@ -30,8 +37,16 @@ public class AuthenticatedUser implements UserDetails {
         return role;
     }
 
+    /** Uses server state loaded for this request, never a verification claim supplied by the client. */
+    public boolean isVerifiedInspector() {
+        return role == UserRole.INSPECTOR && verificationStatus == VerificationStatus.VERIFIED;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (role == UserRole.INSPECTOR && !isVerifiedInspector()) {
+            return List.of();
+        }
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 

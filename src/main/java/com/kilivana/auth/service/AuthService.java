@@ -10,6 +10,8 @@ import com.kilivana.security.JwtProperties;
 import com.kilivana.security.JwtService;
 import com.kilivana.security.TokenService;
 import com.kilivana.users.domain.BuyerProfile;
+import com.kilivana.users.domain.InspectorProfile;
+import com.kilivana.users.domain.VerificationStatus;
 import com.kilivana.users.domain.FarmerProfile;
 import com.kilivana.users.domain.RefreshToken;
 import com.kilivana.users.domain.SupplierProfile;
@@ -36,7 +38,8 @@ public class AuthService {
     private static final Set<UserRole> PUBLIC_ROLES = Set.of(
             UserRole.BUYER,
             UserRole.FARMER,
-            UserRole.SUPPLIER);
+            UserRole.SUPPLIER,
+            UserRole.INSPECTOR);
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -69,11 +72,14 @@ public class AuthService {
     @Transactional
     public AuthResponse signup(SignupRequest request) {
         if (request.role() == null || !PUBLIC_ROLES.contains(request.role())) {
-            throw new BusinessConflictException("Public registration is limited to buyers, farmers and suppliers");
+            throw new BusinessConflictException("Public registration is limited to buyers, farmers, suppliers and inspectors");
         }
         validateRoleProfileData(request);
 
         User user = registerUser(request.email(), request.password(), request.fullName(), request.phoneNumber(), request.role());
+        if (request.role() == UserRole.INSPECTOR) {
+            user.markVerification(VerificationStatus.PENDING);
+        }
         createRoleProfile(request, user);
         return issueTokens(user);
     }
@@ -166,6 +172,10 @@ public class AuthService {
     }
 
     private void validateRoleProfileData(SignupRequest request) {
+        if (request.role() == UserRole.INSPECTOR
+                && (isBlank(request.employeeCode()) || request.employeeCode().length() > 100)) {
+            throw new BusinessConflictException("Inspector accounts require a nonblank employeeCode of at most 100 characters");
+        }
         if (request.role() == UserRole.SUPPLIER && isBlank(request.businessName())) {
             throw new BusinessConflictException("Supplier accounts require businessName");
         }
@@ -182,7 +192,8 @@ public class AuthService {
                     user,
                     request.farmName().trim(),
                     request.farmLocation().trim()));
-            case INSPECTOR, DRIVER, ADMIN -> throw new BusinessConflictException("Role is not available for public registration");
+            case INSPECTOR -> entityManager.persist(new InspectorProfile(user, request.employeeCode().trim()));
+            case DRIVER, ADMIN -> throw new BusinessConflictException("Role is not available for public registration");
         }
     }
 
@@ -206,6 +217,7 @@ public class AuthService {
                 user.getEmail(),
                 user.getFullName(),
                 user.getRole(),
+                user.getVerificationStatus(),
                 accessToken,
                 refreshValue,
                 refreshExpiresAt);

@@ -72,7 +72,7 @@ class AuthServiceTest {
 
     @Test
     void publicSignupRejectsPrivilegedRolesBeforeCreatingAnAccount() {
-        for (UserRole role : new UserRole[]{UserRole.INSPECTOR, UserRole.DRIVER, UserRole.ADMIN}) {
+        for (UserRole role : new UserRole[]{UserRole.DRIVER, UserRole.ADMIN}) {
             SignupRequest request = request(role);
 
             assertThatThrownBy(() -> authService.signup(request))
@@ -117,6 +117,37 @@ class AuthServiceTest {
 
         verify(userRepository, never()).existsByEmailIgnoreCase(any());
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void inspectorSignupCreatesPendingProfileAndTokens() {
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(passwordEncoder.encode("secretPass1")).thenReturn("encoded");
+        when(jwtService.generateAccessToken(any(User.class))).thenReturn("access-token");
+        AuthResponse response = authService.signup(new SignupRequest(
+                "inspector@example.com", "secretPass1", "Inspector", "+254700000001", UserRole.INSPECTOR,
+                null, null, null, "  any code  ", null, null, null, null));
+        ArgumentCaptor<com.kilivana.users.domain.InspectorProfile> profile =
+                ArgumentCaptor.forClass(com.kilivana.users.domain.InspectorProfile.class);
+        verify(entityManager).persist(profile.capture());
+        assertThat(profile.getValue().getEmployeeCode()).isEqualTo("any code");
+        assertThat(profile.getValue().getUser().getVerificationStatus())
+                .isEqualTo(com.kilivana.users.domain.VerificationStatus.PENDING);
+        assertThat(profile.getValue().getUser().getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(response.verificationStatus()).isEqualTo(com.kilivana.users.domain.VerificationStatus.PENDING);
+        assertThat(response.accessToken()).isEqualTo("access-token");
+        assertThat(response.refreshToken()).isNotBlank();
+    }
+
+    @Test
+    void invalidInspectorCodesAreRejectedBeforePersistence() {
+        for (String code : new String[]{null, "", "   ", "x".repeat(101)}) {
+            assertThatThrownBy(() -> authService.signup(new SignupRequest(
+                    "inspector@example.com", "secretPass1", "Inspector", "+254700000001", UserRole.INSPECTOR,
+                    null, null, null, code, null, null, null, null)))
+                    .isInstanceOf(BusinessConflictException.class);
+        }
+        verifyNoInteractions(userRepository, passwordEncoder, entityManager, refreshTokenRepository);
     }
 
     private SignupRequest request(UserRole role) {
