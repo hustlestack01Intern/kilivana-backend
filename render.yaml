@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: kilivana-backend
+    runtime: docker
+    repo: https://github.com/hustlestack01Intern/kilivana-backend
+    branch: main
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: docker
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_BOOTSTRAP_KEY
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://kilivana-backend.onrender.com,http://localhost:3000,http://localhost:5173"
+      - key: DB_URL
+        fromDatabase:
+          name: kilivana-db
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: kilivana-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: kilivana-redis
+          property: port
+      - key: MAIL_HOST
+        value: "smtp.gmail.com"
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_SMTP_AUTH
+        value: "true"
+      - key: MAIL_SMTP_STARTTLS
+        value: "true"
+      - key: PASSWORD_RESET_URL
+        value: "https://kilivana-backend.onrender.com/reset-password"
+
+databases:
+  - name: kilivana-db
+    databaseName: kilivana
+    user: kilivana
+    plan: free
+
+redis:
+  - name: kilivana-redis
+    plan: free
