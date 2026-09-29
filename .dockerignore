@@ -3,9 +3,6 @@ target/
 .gitignore
 *.md
 *.txt
-.mvn/
-mvnw
-mvnw.cmd
 .vscode/
 .idea/
 *.iml
