@@ -11,7 +11,6 @@ import com.kilivana.media.MediaStorage;
 import com.kilivana.media.StoredFile;
 import com.kilivana.security.AuthenticatedUser;
 import com.kilivana.security.CurrentUser;
-import com.kilivana.users.domain.UserRole;
 import jakarta.transaction.Transactional;
 import java.io.InputStream;
 import java.util.List;
@@ -41,7 +40,7 @@ public class VisitPhotoService {
     @Transactional
     public VisitPhotoResponse addPhoto(UUID inspectionId, MultipartFile file) {
         AuthenticatedUser actor = currentUser.required();
-        if (actor.getRole() != UserRole.INSPECTOR) {
+        if (!actor.isVerifiedInspector()) {
             throw new UnauthorizedOperationException("Only inspectors can attach visit photos");
         }
         Inspection inspection = inspectionRepository.findWithActorsById(inspectionId)
@@ -86,7 +85,7 @@ public class VisitPhotoService {
     }
 
     private void requireInspectionAccess(AuthenticatedUser actor, Inspection inspection) {
-        if (actor.getRole() != UserRole.INSPECTOR
+        if (!actor.isVerifiedInspector()
                 && !inspection.getProduct().getOwner().getId().equals(actor.getId())) {
             throw new UnauthorizedOperationException("You cannot access photos for this inspection");
         }

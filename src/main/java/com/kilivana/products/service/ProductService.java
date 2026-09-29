@@ -101,7 +101,7 @@ public class ProductService {
                 throw new ResourceNotFoundException("Product not found");
             }
             boolean canView = product.getOwner().getId().equals(actor.getId())
-                    || actor.getRole() == UserRole.ADMIN || actor.getRole() == UserRole.INSPECTOR;
+                    || actor.getRole() == UserRole.ADMIN || actor.isVerifiedInspector();
             if (!canView) {
                 throw new ResourceNotFoundException("Product not found");
             }
@@ -197,7 +197,7 @@ public class ProductService {
             boolean canView = actor != null
                     && (product.getOwner().getId().equals(actor.getId())
                     || actor.getRole() == UserRole.ADMIN
-                    || actor.getRole() == UserRole.INSPECTOR);
+                    || actor.isVerifiedInspector());
             if (!canView) {
                 throw new ResourceNotFoundException("Product not found");
             }

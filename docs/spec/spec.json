@@ -2,7 +2,7 @@
  "openapi": "3.0.1",
  "info": {
   "title": "Backend system for the Kilivana App Platform",
-  "description": "Agricultural marketplace and logistics backend: auth, marketplace, orders, payments, logistics, inspections, badges, disputes and admin APIs under the /api/v1 base path.",
+  "description": "Agricultural marketplace and logistics backend: auth, marketplace, orders, payments, logistics, inspections, badges, disputes and admin APIs under the /api/v1 base path. Inspector privileges require role INSPECTOR and verificationStatus VERIFIED. PENDING and UNVERIFIED inspectors may authenticate, but Inspector operations return 403 FORBIDDEN. Inactive products and their images retain 404 concealment for unauthorized viewers. Existing seller access and ownership restrictions apply.",
   "version": "v1"
  },
  "servers": [
@@ -1687,7 +1687,9 @@
        }
       }
      }
-    }
+    },
+    "summary": "Register a public account",
+    "description": "Signup and register are aliases. Public roles: BUYER, FARMER, SUPPLIER, INSPECTOR. Inspectors require employeeCode and start ACTIVE with PENDING verification. Tokens allow authentication, but Inspector privileges require Admin verification."
    }
   },
   "/api/v1/auth/register": {
@@ -1717,7 +1719,9 @@
        }
       }
      }
-    }
+    },
+    "summary": "Register a public account",
+    "description": "Signup and register are aliases. Public roles: BUYER, FARMER, SUPPLIER, INSPECTOR. Inspectors require employeeCode and start ACTIVE with PENDING verification. Tokens allow authentication, but Inspector privileges require Admin verification."
    }
   },
   "/api/v1/auth/refresh": {
@@ -2032,7 +2036,9 @@
        }
       }
      }
-    }
+    },
+    "summary": "Update user verification (Admin only)",
+    "description": "An authenticated Admin may set verificationStatus to VERIFIED to approve an Inspector. PENDING and UNVERIFIED revoke Inspector privileges on subsequent requests, including requests using existing access tokens."
    }
   },
   "/api/v1/users/{userId}/status": {
@@ -5222,13 +5228,12 @@
      },
      "role": {
       "type": "string",
+      "description": "Public role. Inspector accounts enter PENDING verification and require Admin approval for Inspector privileges.",
       "enum": [
        "BUYER",
-       "SUPPLIER",
        "FARMER",
-       "INSPECTOR",
-       "DRIVER",
-       "ADMIN"
+       "SUPPLIER",
+       "INSPECTOR"
       ]
      },
      "businessName": {
@@ -5249,7 +5254,8 @@
      "employeeCode": {
       "maxLength": 100,
       "minLength": 0,
-      "type": "string"
+      "type": "string",
+      "description": "Required and nonblank for INSPECTOR only; maximum 100 characters; trimmed before storage. No uniqueness or format requirement."
      },
      "licenseNumber": {
       "maxLength": 100,
@@ -5295,6 +5301,15 @@
        "INSPECTOR",
        "DRIVER",
        "ADMIN"
+      ]
+     },
+     "verificationStatus": {
+      "type": "string",
+      "description": "Authoritative verification state. Inspector privileges require VERIFIED; PENDING inspectors may authenticate.",
+      "enum": [
+       "UNVERIFIED",
+       "PENDING",
+       "VERIFIED"
       ]
      },
      "accessToken": {

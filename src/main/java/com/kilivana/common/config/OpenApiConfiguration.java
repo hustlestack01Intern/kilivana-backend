@@ -15,7 +15,10 @@ public class OpenApiConfiguration {
                 .title("Backend system for the Kilivana App Platform")
                 .description("Agricultural marketplace and logistics backend: auth, marketplace, "
                         + "orders, payments, logistics, inspections, badges, disputes and admin APIs "
-                        + "under the /api/v1 base path.")
+                        + "under the /api/v1 base path. Inspector privileges require role INSPECTOR and verificationStatus VERIFIED. "
+                        + "PENDING and UNVERIFIED inspectors may authenticate, but Inspector operations return 403 FORBIDDEN. "
+                        + "Inactive products and their images retain 404 concealment for unauthorized viewers. "
+                        + "Existing seller access and ownership restrictions apply.")
                 .version("v1"));
     }
 }

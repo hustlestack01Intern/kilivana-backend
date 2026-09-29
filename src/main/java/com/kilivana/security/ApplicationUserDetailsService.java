@@ -20,7 +20,7 @@ public class ApplicationUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) {
         return userRepository.findByEmailIgnoreCase(username)
                 .filter(user -> user.getStatus() == UserStatus.ACTIVE)
-                .map(user -> new AuthenticatedUser(user.getId(), user.getEmail(), user.getPasswordHash(), user.getRole()))
+                .map(user -> new AuthenticatedUser(user.getId(), user.getEmail(), user.getPasswordHash(), user.getRole(), user.getVerificationStatus()))
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid credentials"));
     }
 }

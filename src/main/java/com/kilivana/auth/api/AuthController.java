@@ -4,6 +4,7 @@ import com.kilivana.auth.service.AuthService;
 import com.kilivana.auth.service.PasswordResetService;
 import com.kilivana.users.api.UserProfileResponse;
 import com.kilivana.users.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,7 @@ public class AuthController {
         this.userService = userService;
     }
 
+    @Operation(summary = "Register a public account", description = "Signup and register are aliases. Public roles: BUYER, FARMER, SUPPLIER, INSPECTOR. Inspectors require employeeCode and start ACTIVE with PENDING verification. Tokens allow authentication, but Inspector privileges require Admin verification.")
     @PostMapping({"/signup", "/register"})
     public ResponseEntity<AuthResponse> signup(@Valid @RequestBody SignupRequest request) {
         return ResponseEntity.ok()

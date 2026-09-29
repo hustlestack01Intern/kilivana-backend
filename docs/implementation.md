@@ -117,11 +117,16 @@ Seeded badges:
 | `RELIABLE_BUYER`     | Trusted buyer.                                     |
 | `COMMUNITY_PARTNER`  | Community partner.                                 |
 
-`BadgeService.awardBadge` is idempotent per user-badge pair (duplicate awards are a no-op / conflict). Inspectors award freely; `QUALITY_HARVEST` is granted automatically on a passed inspection.
+`BadgeService.awardBadge` is idempotent per user-badge pair (duplicate awards are a no-op / conflict). Verified Inspectors award badges; `QUALITY_HARVEST` is granted automatically on a passed inspection.
 
 ## 6. Security
 
-- `POST /api/v1/auth/signup` — public; rejects the `ADMIN` role.
+- `POST /api/v1/auth/signup` and `/api/v1/auth/register` are aliases. Public roles: `BUYER`, `FARMER`, `SUPPLIER`, `INSPECTOR`; `DRIVER` and `ADMIN` are rejected.
+- Inspector signup requires a nonblank `employeeCode` (maximum 100 characters, trimmed, no uniqueness or format restriction). The user and Inspector profile are created atomically as `ACTIVE` / `PENDING`. Other signup roles retain their existing verification defaults.
+- Signup, login and refresh return authoritative `verificationStatus` (`UNVERIFIED`, `PENDING`, `VERIFIED`) alongside the existing token fields. Pending Inspectors can log in; Android can also read `/api/v1/auth/me` or `/api/v1/users/me` to check current verification.
+- Admin approval: `PATCH /api/v1/users/{userId}/verification`, Admin bearer token, JSON `{"verificationStatus":"VERIFIED"}`. Returns the updated `UserProfileResponse`; non-Admins receive `403 FORBIDDEN`. No additional approval endpoint is needed.
+- Inspector privileges require both Inspector role and VERIFIED state loaded from the database on each authenticated request. Approval/revocation takes effect on subsequent requests even with existing tokens. This covers inspections, site visits, audit reports, inspection photos, badge awards and inactive product/image access. Existing ownership and Farmer/Supplier permissions remain.
+- Unauthorized Inspector operations return the standard `403 FORBIDDEN` error; inactive products/images retain the existing `404` concealment behavior. Public catalog and authenticated nonprivileged capabilities remain available.
 - `POST /api/v1/admins/signup` — public; the *inner domain* endpoint that provisions `ADMIN` accounts. It requires the `X-Admin-Bootstrap-Key` header matching `kilivana.security.admin.bootstrap-key` (env `ADMIN_BOOTSTRAP_KEY`, no default). Not configured ⇒ endpoint returns 403, so admin provisioning is disabled out of the box. Reuses `AuthService.registerAndAuthenticate` and issues the standard token pair.
 - `POST /api/v1/contact-messages` and `POST /api/v1/webhooks/**` — public by design.
 - `GET /api/v1/products/**`, `GET /api/v1/categories/**`, `GET /api/v1/badges/**`, `GET /actuator/health/**` — public read endpoints.
@@ -159,7 +164,7 @@ GET    /api/v1/auth/me
 POST   /api/v1/admins/signup                          (X-Admin-Bootstrap-Key header)
 GET    /api/v1/users/me | /users/{userId};  PUT /users/me
 PATCH  /api/v1/users/{userId}/status                  (admin: SUSPENDED/ACTIVE)
-PATCH  /api/v1/users/{userId}/verification            (admin approve/reject)
+PATCH  /api/v1/users/{userId}/verification            (admin sets UNVERIFIED/PENDING/VERIFIED)
 GET/POST /api/v1/addresses;  PUT/DELETE /api/v1/addresses/{addressId}
 
 # marketplace

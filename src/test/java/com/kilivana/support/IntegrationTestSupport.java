@@ -160,6 +160,8 @@ public abstract class IntegrationTestSupport {
                 request.role(),
                 UserStatus.ACTIVE));
         if (request.role() == UserRole.INSPECTOR) {
+            user.markVerification(com.kilivana.users.domain.VerificationStatus.VERIFIED);
+            userRepository.save(user);
             inspectorProfileRepository.save(new InspectorProfile(user, request.employeeCode().trim()));
         } else {
             driverProfileRepository.save(new DriverProfile(

@@ -36,7 +36,7 @@ public class AuditReportService {
     @Transactional
     public AuditReportResponse create(UUID inspectionId, CreateAuditReportRequest request) {
         AuthenticatedUser actor = currentUser.required();
-        if (actor.getRole() != UserRole.INSPECTOR) {
+        if (!actor.isVerifiedInspector()) {
             throw new UnauthorizedOperationException("Only inspectors can issue audit reports");
         }
         Inspection inspection = inspectionRepository.findWithActorsById(inspectionId)
@@ -74,7 +74,7 @@ public class AuditReportService {
 
     private void requireViewer() {
         AuthenticatedUser actor = currentUser.required();
-        if (actor.getRole() != UserRole.INSPECTOR
+        if (!actor.isVerifiedInspector()
                 && actor.getRole() != UserRole.SUPPLIER
                 && actor.getRole() != UserRole.FARMER) {
             throw new UnauthorizedOperationException("Only inspectors and sellers can view audit reports");
