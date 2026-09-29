@@ -16,7 +16,7 @@ if [ ! -x "${DIST_DIR}/bin/mvn" ]; then
     curl --fail --location --silent --show-error \
         "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MAVEN_VERSION}/${ARCHIVE_NAME}" \
         --output "${ARCHIVE_PATH}"
-    printf '%s  %s\n' "${CHECKSUM}" "${ARCHIVE_PATH}" | shasum -a 512 -c -
+    printf '%s  %s\n' "${CHECKSUM}" "${ARCHIVE_PATH}" | sha512sum -c -
     tar -xzf "${ARCHIVE_PATH}" -C "${DIST_DIR}" --strip-components=1
     rm -f "${ARCHIVE_PATH}"
 fi
