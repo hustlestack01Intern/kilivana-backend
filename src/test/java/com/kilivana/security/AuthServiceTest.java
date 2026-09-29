@@ -72,13 +72,24 @@ class AuthServiceTest {
 
     @Test
     void publicSignupRejectsPrivilegedRolesBeforeCreatingAnAccount() {
-        for (UserRole role : new UserRole[]{UserRole.INSPECTOR, UserRole.DRIVER, UserRole.ADMIN}) {
+        for (UserRole role : new UserRole[]{UserRole.DRIVER, UserRole.ADMIN}) {
             SignupRequest request = request(role);
 
             assertThatThrownBy(() -> authService.signup(request))
                     .isInstanceOf(BusinessConflictException.class)
                     .hasMessageContaining("limited");
         }
+
+        verifyNoInteractions(userRepository, passwordEncoder, entityManager);
+    }
+
+    @Test
+    void publicSignupRequiresEmployeeCodeForInspector() {
+        SignupRequest request = request(UserRole.INSPECTOR);
+
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(BusinessConflictException.class)
+                .hasMessageContaining("employeeCode");
 
         verifyNoInteractions(userRepository, passwordEncoder, entityManager);
     }

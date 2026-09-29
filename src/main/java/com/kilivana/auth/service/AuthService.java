@@ -11,6 +11,7 @@ import com.kilivana.security.JwtService;
 import com.kilivana.security.TokenService;
 import com.kilivana.users.domain.BuyerProfile;
 import com.kilivana.users.domain.FarmerProfile;
+import com.kilivana.users.domain.InspectorProfile;
 import com.kilivana.users.domain.RefreshToken;
 import com.kilivana.users.domain.SupplierProfile;
 import com.kilivana.users.domain.User;
@@ -36,7 +37,8 @@ public class AuthService {
     private static final Set<UserRole> PUBLIC_ROLES = Set.of(
             UserRole.BUYER,
             UserRole.FARMER,
-            UserRole.SUPPLIER);
+            UserRole.SUPPLIER,
+            UserRole.INSPECTOR);
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -172,6 +174,9 @@ public class AuthService {
         if (request.role() == UserRole.FARMER && (isBlank(request.farmName()) || isBlank(request.farmLocation()))) {
             throw new BusinessConflictException("Farmer accounts require farmName and farmLocation");
         }
+        if (request.role() == UserRole.INSPECTOR && isBlank(request.employeeCode())) {
+            throw new BusinessConflictException("Inspector accounts require employeeCode");
+        }
     }
 
     private void createRoleProfile(SignupRequest request, User user) {
@@ -182,7 +187,8 @@ public class AuthService {
                     user,
                     request.farmName().trim(),
                     request.farmLocation().trim()));
-            case INSPECTOR, DRIVER, ADMIN -> throw new BusinessConflictException("Role is not available for public registration");
+            case INSPECTOR -> entityManager.persist(new InspectorProfile(user, request.employeeCode().trim()));
+            case DRIVER, ADMIN -> throw new BusinessConflictException("Role is not available for public registration");
         }
     }
 
