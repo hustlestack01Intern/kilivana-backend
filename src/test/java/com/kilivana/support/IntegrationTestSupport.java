@@ -119,11 +119,12 @@ public abstract class IntegrationTestSupport {
         registry.add("REDIS_HOST", REDIS_CONTAINER::getHost);
         registry.add("spring.data.redis.host", REDIS_CONTAINER::getHost);
         registry.add("spring.data.redis.port", () -> String.valueOf(REDIS_CONTAINER.getMappedPort(6379)));
-        // Google sign-in off for the whole shared base class. Every test that needs it turns it
-        // on itself with its own @DynamicPropertySource, which Spring applies after this one, so
-        // a feature under test cannot leak its configuration into the other three hundred and
-        // thirty tests that share this context. See GoogleAuthIntegrationTest.
-        registry.add("kilivana.security.google.enabled", () -> "false");
+        // NOTE: kilivana.security.google.enabled is deliberately NOT registered here. It defaults
+        // to false in application.yml, which already keeps the Google beans out of every test
+        // that does not ask for them. Registering it here was actively harmful: Spring collects
+        // @DynamicPropertySource methods subclass-first and replays them into ONE LinkedHashMap,
+        // so a registration on this base class is applied LAST and beats @SpringBootTest
+        // properties, @TestPropertySource and the subclass's own @DynamicPropertySource alike.
     }
 
     @Autowired
