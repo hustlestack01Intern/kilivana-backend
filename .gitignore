@@ -24,3 +24,7 @@ dist/
 
 # Local uploads / media
 uploads/
+# Agent tooling (local only)
+.magician/
+.opencode/
+opencode.json
