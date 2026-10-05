@@ -15,11 +15,15 @@ import jakarta.transaction.Transactional;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PasswordResetService {
+
+    private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository resetTokenRepository;
@@ -65,6 +69,12 @@ public class PasswordResetService {
             try {
                 mailSender.sendResetLink(user.getEmail(), candidate);
             } catch (RuntimeException exception) {
+                // Deliberately no throwable argument: Spring's MailSendException message carries the
+                // SMTP host and the authenticated username, and the stack trace would print both.
+                // The exception class alone is enough to tell a timeout from a 5xx or a bad address.
+                log.warn("Password reset mail delivery failed for userId={}, exceptionType={}; "
+                        + "the reset token has been invalidated",
+                        user.getId(), exception.getClass().getName());
                 resetToken.markUsed();
             }
             return null;

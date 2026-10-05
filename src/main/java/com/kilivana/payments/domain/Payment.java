@@ -40,6 +40,21 @@ public class Payment extends BaseEntity {
     @Column(nullable = true, length = 150)
     private String gatewayReference;
 
+    /**
+     * Who moved this payment to VERIFIED, and when.
+     *
+     * <p>Manual seller verification is the only settlement path this deployment has, because
+     * the gateway is simulated. That makes "a seller said they were paid" the sole evidence
+     * of settlement, so the evidence needs to name its author. Without these columns a
+     * settlement carries no trace of who asserted it, and a dispute over a paid order cannot
+     * be adjudicated from the data at all.
+     */
+    @Column(name = "verified_by_user_id", nullable = true)
+    private java.util.UUID verifiedByUserId;
+
+    @Column(name = "verified_at", nullable = true)
+    private java.time.OffsetDateTime verifiedAt;
+
     protected Payment() {
     }
 
@@ -89,6 +104,20 @@ public class Payment extends BaseEntity {
             throw new BusinessConflictException("Only pending payments can be verified");
         }
         this.status = PaymentStatus.VERIFIED;
+    }
+
+    public void markVerifiedBy(java.util.UUID verifierId) {
+        markVerified();
+        this.verifiedByUserId = verifierId;
+        this.verifiedAt = java.time.OffsetDateTime.now();
+    }
+
+    public java.util.UUID getVerifiedByUserId() {
+        return verifiedByUserId;
+    }
+
+    public java.time.OffsetDateTime getVerifiedAt() {
+        return verifiedAt;
     }
 
     public void markFailed() {

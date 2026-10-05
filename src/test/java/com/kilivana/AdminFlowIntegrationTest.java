@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class AdminFlowIntegrationTest extends IntegrationTestSupport {
 
-    private static final String ADMIN_BOOTSTRAP_KEY = "test-admin-bootstrap-key";
+    private static final String ADMIN_BOOTSTRAP_KEY = "test-admin-bootstrap-key-at-least-32-chars-long";
 
     private AuthResponse adminSignup(String email) throws Exception {
         return readBody(mockMvc.perform(post("/api/v1/admins/signup")
