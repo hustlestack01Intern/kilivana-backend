@@ -1,3 +1,20 @@
+# Render Blueprint - one-click deploy of the Kilivana backend.
+#
+#   1. Push this file to the default branch of the repo.
+#   2. Render dashboard -> New -> Blueprint -> select the repository.
+#   3. Fill in the two MAIL_* values (only needed for password-reset email).
+#
+# ON PLANS AND COSTS, so the first deploy does not surprise anyone:
+#   * `services[0].plan` is 0.5c-512mb, the cheapest plan that can carry a disk.
+#     `starter` is still accepted as a legacy alias for it, and free web services
+#     cannot mount a disk at all, so lower it to `free` only if losing uploads is
+#     acceptable. `0.5c-512mb` is the current name for the same tier.
+#   * `databases[0].plan` is `free`, which is 0.1c-256mb. Render deletes a free
+#     Postgres instance 30 days after creation, so raise it before you rely on it.
+#   * `services[1]` is a Key Value instance on the free 25 MB tier, which is plenty
+#     for a rate limiter. Raise it to 256mb if the limiter ever reports evictions.
+#
+# Validated against https://render.com/schema/render.yaml.json.
 services:
   - type: web
     name: kilivana-backend
@@ -5,31 +22,95 @@ services:
     repo: https://github.com/hustlestack01Intern/kilivana-backend
     branch: main
     dockerfilePath: ./Dockerfile
-    plan: free
-    healthCheckPath: /actuator/health
+    dockerContext: .
+    plan: 0.5c-512mb
+    region: oregon
+    healthCheckPath: /actuator/health/liveness
+    # Inspection photos and site-visit evidence are written to the container
+    # filesystem. Without this disk every deploy discards them.
+    disk:
+      name: kilivana-media
+      mountPath: /data/uploads
+      sizeGB: 5
     envVars:
       - key: SPRING_PROFILES_ACTIVE
-        value: docker
-      - key: JWT_SECRET
-        generateValue: true
-      - key: ADMIN_BOOTSTRAP_KEY
-        generateValue: true
-      - key: CORS_ALLOWED_ORIGINS
-        value: "https://kilivana-backend.onrender.com,http://localhost:3000,http://localhost:5173"
+        value: prod
+
+      # Render exposes this as postgres://... The application rewrites provider
+      # connection URIs into JDBC URLs on startup.
       - key: DB_URL
         fromDatabase:
           name: kilivana-db
           property: connectionString
       - key: REDIS_HOST
         fromService:
-          type: redis
+          type: keyvalue
           name: kilivana-redis
           property: host
       - key: REDIS_PORT
         fromService:
-          type: redis
+          type: keyvalue
           name: kilivana-redis
           property: port
+
+      # REQUIRED. application-prod.yml defaults trust-forwarded-headers to TRUE and ships no
+      # default for this list, so omitting it is a failed boot, not a degraded one: two
+      # independent guards refuse to assemble the context — ProxyProperties.validate() and the
+      # DeploymentEnvironmentValidator, which names this variable in the failure message.
+      #
+      # The value must contain Render's edge proxy address. It is a property of the platform, not
+      # of this repository, which is why it is not hardcoded. To find it: deploy once with
+      # TRUST_FORWARDED_HEADERS=false, read the socket peer ClientIpResolver logs, then set this
+      # to that address (or the narrowest CIDR containing it) and turn trust back on.
+      #
+      # Do NOT "fix" this by leaving TRUST_FORWARDED_HEADERS=false. That makes every caller behind
+      # the edge share one rate-limit bucket per rule, so all four credential limits become a
+      # platform-wide budget that six requests from one caller can exhaust.
+      #
+      # Render's private service network is the 10.0.0.0/8 range; public addresses are not
+      # covered, so do not widen this to 0.0.0.0/0 — ProxyProperties rejects anything wider than
+      # IPv4 /8 anyway, and a list that trusts everything limits nothing while appearing to work.
+      - key: TRUSTED_PROXIES
+        sync: false
+      - key: TRUST_FORWARDED_HEADERS
+        value: "true"
+      # Render's edge appends exactly one entry to X-Forwarded-For. Raise only if a proxy is
+      # added in front of Render; never lower it to make something work.
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+
+      # generateValue produces a 44-character base64 secret, which clears the
+      # 32-byte / 12-distinct-character minimum the JWT service enforces.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_BOOTSTRAP_KEY
+        generateValue: true
+
+      # The application serves the API. Browsers calling it come from the admin
+      # panel and any web front end, never from the API's own origin.
+      #
+      # PLACEHOLDER — CHANGE THIS BEFORE THE FIRST REAL DEPLOY.
+      # `https://your-admin-app.example.com` is not your admin panel. It is a
+      # reserved-by-RFC-2606 name that will never resolve to a host you control,
+      # and it is here so a browser-origin mistake is visible rather than silent.
+      # Replace it with the real origin, or delete the whole variable and use
+      # Render's dashboard to set CORS_ALLOWED_ORIGINS for each environment.
+      - key: CORS_ALLOWED_ORIGINS
+        value: "http://localhost:5173,http://localhost:3000,https://your-admin-app.example.com"
+
+      # Password-reset links point at the frontend page that consumes the token,
+      # not at this API.
+      - key: PASSWORD_RESET_URL
+        value: "http://localhost:5173/reset-password"
+
+      # Serve the OpenAPI document so /api-docs and /swagger-ui.html are reachable.
+      - key: OPENAPI_ENABLED
+        value: "true"
+      - key: SWAGGER_ENABLED
+        value: "true"
+      - key: OPENAPI_PUBLIC
+        value: "false"
+
       - key: MAIL_HOST
         value: "smtp.gmail.com"
       - key: MAIL_PORT
@@ -42,15 +123,22 @@ services:
         value: "true"
       - key: MAIL_SMTP_STARTTLS
         value: "true"
-      - key: PASSWORD_RESET_URL
-        value: "https://kilivana-backend.onrender.com/reset-password"
+
+  - type: keyvalue
+    name: kilivana-redis
+    # The free Key Value tier is 25 MB, which is ample for rate-limit counters.
+    plan: free
+    region: oregon
+    # Required for Key Value, and empty means internal network only: nothing outside
+    # Render needs to reach the limiter.
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
 
 databases:
   - name: kilivana-db
     databaseName: kilivana
     user: kilivana
+    # Render deletes a free Postgres instance 30 days after it is created.
     plan: free
-
-redis:
-  - name: kilivana-redis
-    plan: free
+    region: oregon
+    postgresMajorVersion: "16"

@@ -35,9 +35,9 @@ Role rules are enforced at the service layer:
 | `users`        | Users, profiles (buyer/supplier/farmer/inspector/driver), role/status management, driver availability. |
 | `addresses`    | Buyer/seller delivery and pickup addresses with optional coordinates. |
 | `products`     | Crop/input listings (`sellerType` FARMER/SUPPLIER), sectors, categories, images, stock reservation, moderation, admin browse. |
-| `orders`       | Multi-seller cart → customer order split into per-seller sub-orders; per-sub-order subtotal/delivery fee/total; state machine; cancelling/rejecting auto-releases reserved stock and refunds verified payments; publishes `OrderStatusChangedEvent`. |
+| `orders`       | Multi-seller cart → customer order split into per-seller sub-orders; per-sub-order subtotal/delivery fee/total; state machine; cancelling/rejecting auto-releases reserved stock and logs any verified payment left unreconciled (no refund is issued); publishes `OrderStatusChangedEvent`. |
 | `payments`     | Payment lifecycle + account ledger (inbound/outbound); marks the parent customer order PAID when all sub-orders are covered. |
-| `paymentgateway` | Gateway abstraction (`PaymentGateway`), M-PESA stub, idempotent webhook handler (pessimistic lock on `externalId`). |
+| `paymentgateway` | Gateway abstraction (`PaymentGateway`). `SimulatedPaymentGateway` is non-authoritative: it moves no money, reports `PENDING`, and refuses refunds. No webhook endpoint. |
 | `logistics`    | Delivery job lifecycle + auditable tracking-event trail; admin driver assignment + driver acceptance. |
 | `inspection`   | Inspections (configurable checklists), site-visit requests, audit reports, visit photos (media storage), next-inspection scheduling. |
 | `badges`       | Badges and user badges; badge auto-awarding (e.g. a passed inspection awards `QUALITY_HARVEST`).
@@ -64,7 +64,7 @@ COMPLETED / CANCELLED / REJECTED : terminal
 
 - **Seller** may move to `CONFIRMED`, `READY_FOR_PICKUP`, `IN_PROGRESS`, `DELIVERED`, `REJECTED`.
 - **Buyer** may move to `CANCELLED`, `COMPLETED`.
-- Moving to `CANCELLED` or `REJECTED` releases the reserved quantity back to the listing **and** auto-refunds every `VERIFIED` payment on the order (`Payment.refund() → REFUNDED`).
+- Moving to `CANCELLED` or `REJECTED` releases the reserved quantity back to the listing. It issues **no** refund: with no authoritative gateway configured, every `VERIFIED` payment on the order is left in `VERIFIED` and logged as unreconciled for an operator. Marking one `REFUNDED` here was a lie on two counts — no gateway was called, and the trigger is buyer-reachable, so any buyer could mint a "Refund issued" notification for money they kept.
 - Each sub-order carries `subtotal`, `delivery_fee` (server-computed) and `total = subtotal + delivery_fee`.
 - A `CustomerOrder` (one checkout) is split into one sub-order per seller; it becomes `PAID` once every sub-order is covered by a verified payment.
 
@@ -94,7 +94,7 @@ PENDING ────┤
             └─> FAILED
 ```
 
-`markVerified()` (PENDING→VERIFIED), `markFailed()` (PENDING→FAILED), `refund()` (VERIFIED→REFUNDED). Sellers manage inbound payments (verify/fail/refund); buyers track outbound payments. Gateway confirmation arrives via the payment webhook and publishes `PaymentStatusChangedEvent`.
+`markVerified()` (PENDING→VERIFIED), `markFailed()` (PENDING→FAILED), `refund()` (VERIFIED→REFUNDED). Sellers manage inbound payments (verify/fail/refund); buyers track outbound payments. There is **no gateway callback**: the only gateway this deployment ships is simulated, so a payment reaches `VERIFIED` solely through a manual seller `verify`, which publishes `PaymentStatusChangedEvent`. `refund()` exists on the domain object but the service refuses to reach it while the gateway is non-authoritative, so the `VERIFIED → REFUNDED` edge is unreachable in this deployment.
 
 ### 4.5 Site visit
 
@@ -128,13 +128,13 @@ Seeded badges:
 - Inspector privileges require both Inspector role and VERIFIED state loaded from the database on each authenticated request. Approval/revocation takes effect on subsequent requests even with existing tokens. This covers inspections, site visits, audit reports, inspection photos, badge awards and inactive product/image access. Existing ownership and Farmer/Supplier permissions remain.
 - Unauthorized Inspector operations return the standard `403 FORBIDDEN` error; inactive products/images retain the existing `404` concealment behavior. Public catalog and authenticated nonprivileged capabilities remain available.
 - `POST /api/v1/admins/signup` — public; the *inner domain* endpoint that provisions `ADMIN` accounts. It requires the `X-Admin-Bootstrap-Key` header matching `kilivana.security.admin.bootstrap-key` (env `ADMIN_BOOTSTRAP_KEY`, no default). Not configured ⇒ endpoint returns 403, so admin provisioning is disabled out of the box. Reuses `AuthService.registerAndAuthenticate` and issues the standard token pair.
-- `POST /api/v1/contact-messages` and `POST /api/v1/webhooks/**` — public by design.
+- `POST /api/v1/contact-messages` — public by design. There is no `POST /api/v1/webhooks/**`: the unsigned payment webhook was deleted, so no unauthenticated party can drive a payment to `VERIFIED`.
 - `GET /api/v1/products/**`, `GET /api/v1/categories/**`, `GET /api/v1/badges/**`, `GET /actuator/health/**` — public read endpoints.
 - `POST /api/v1/auth/login`, `/refresh`, `/logout`; logout revokes **all** refresh tokens belonging to the user.
 - Access tokens are signed JWTs (HS256), 15 min, issued by `kilivana-backend`. The signing secret **must** be supplied via `JWT_SECRET` (`kilivana.security.jwt.secret`); `JwtService` refuses to start with a blank secret.
 - Mutating endpoints resolve the actor from the token via `CurrentUser.required()` and enforce role/ownership rules.
 - Suspended users are rejected at the JWT filter (`RuntimeException` → cleared context → 401).
-- Optional per-IP rate limiting (`kilivana.security.rate-limit.enabled`, 30 req/min) is gated off by default.
+- Rate limiting is on by default (`kilivana.security.rate-limit.enabled`, `RATE_LIMIT_ENABLED`, default `true`) and applies **only** to four credential-abuse endpoints, keyed by client IP: `POST /api/v1/auth/login` 5/min, `POST /api/v1/auth/signup|register` 5/min, `POST /api/v1/auth/forgot-password` 3/min, `POST /api/v1/admins/signup` 3/min. `/actuator/**` is never rate limited. **There is no general rate limit** — every other path is unthrottled, so `RATE_LIMIT_REQUESTS_PER_MINUTE` is refused at `prod` startup as a variable that does nothing.
 
 ## 7. Data model & migrations
 
@@ -150,6 +150,8 @@ Seeded badges:
 - `V8__communications_disputes_and_audit.sql` — `notifications`, `disputes`, `audit_logs` tables + supporting columns/indexes.
 - `V9__delivery_fees_and_pickup_ready.sql` — adds `subtotal`/`delivery_fee`/`total_amount` per sub-order and `READY_FOR_PICKUP` order-status support.
 - `V10__refresh_token_family_id.sql` — adds `refresh_tokens.family_id` (backfilled, indexed) for refresh-token family tracking.
+- `V11__one_live_payment_per_order.sql` — partial unique index on `payments(order_id) where status = 'PENDING'`; at most one live payment per order. Enforced in the database because the service check is a read followed by a write, so two concurrent requests can both observe "none pending".
+- `V12__payment_verification_attribution.sql` — adds `payments.verified_by_user_id` (FK `users.id`) and `payments.verified_at`; records who made a manual settlement and when. Nullable, never back-filled: pre-existing verified payments predate attribution.
 
 Every entity extends `BaseEntity` (`id` UUID, optimistic-lock `version`, `createdAt`/`updatedAt`).
 
@@ -181,8 +183,7 @@ PATCH  /api/v1/orders/{orderId}/status
 # payments
 POST   /api/v1/payments                       (idempotency-key, MPESA)
 GET    /api/v1/payments/inbound | /outbound | /{paymentId}
-POST   /api/v1/payments/verify;  POST /payments/{id}/fail | /refund
-POST   /api/v1/webhooks/payments             (public gateway webhook)
+POST   /api/v1/payments/verify;  POST /payments/{id}/fail | /refund   (refund is refused while the gateway is simulated)
 
 # logistics
 GET    /api/v1/logistics/jobs/available | /mine | /order/{orderId} | /{jobId}/tracking
@@ -219,15 +220,15 @@ JSON payloads use request records with Jakarta Bean Validation (`@NotNull`, `@No
 
 ## 10. Testing strategy
 
-- **Integration tests** (Testcontainers Postgres + Redis, Spring Boot): end-to-end flows for authentication, marketplace, trust & fulfillment, and the fulfillment extensions (contact messages, site visits, audit reports, delivery logs, payment webhook).
+- **Integration tests** (Testcontainers Postgres + Redis, Spring Boot): end-to-end flows for authentication, marketplace, trust & fulfillment, and the fulfillment extensions (contact messages, site visits, audit reports, tracking events, and the refusal of a forged payment webhook).
   - `IntegrationTestSupport` boots one Postgres and one Redis container per JVM; each test truncates the Postgres tables and flushes Redis. **`badges` is seeded by Flyway and never truncated.**
 - **Pure domain unit tests:** `Listing`, `Delivery`, `Inspection`, `Payment` — state-transition rules, guards, invariants.
-- **Service unit tests (Mockito):** `OrderService` — role authorisation, create + reserve behaviour, cancel/reject releasing stock, and auto-refund of verified payments.
+- **Service unit tests (Mockito):** `OrderService` — role authorisation, create + reserve behaviour, and cancel/reject releasing stock while leaving verified payments unreconciled; `PaymentService` — refund refused against a simulated gateway.
 - Environment requirement for Testcontainers on this machine: a running Colima Docker engine via the docker socket, with `DOCKER_API_VERSION=1.44` and `-Dapi.version=1.44` (engine API min 1.40, testcontainers default 1.32 fails) and `TESTCONTAINERS_RYUK_DISABLED=true`.
 
 ## 11. Open / deliberate simplifications
 
-- The M-PESA adapter is a stub (`MpesaStubPaymentGateway`) that returns `SUCCESS` synchronously; `PaymentGateway` lets real providers (M-PESA, Stripe) slot in behind the webhook endpoint.
+- The M-PESA adapter is `SimulatedPaymentGateway`. It reports `GatewayStatus.PENDING` rather than `SUCCESS`, is explicitly non-authoritative, and refuses `refund()`. `PaymentGateway` lets real providers (M-PESA STK, Flutterwave, Paystack) slot in behind the same interface — but a real one must arrive with its own signature verification, not merely by re-enabling this path.
 - Media storage is a local-filesystem implementation of `MediaStorage`; object storage (S3) would be a drop-in replacement.
 - Rate limiting defaults to a Redis-backed fixed-window counter (`RATE_LIMIT_BACKEND=redis`, `matchIfMissing`); set `RATE_LIMIT_BACKEND=memory` for a single-instance in-memory counter.
 - Multi-seller carts are implemented; the public catalog browse (`GET /products`) returns an unpaged list (clients paginate client-side), while admin list endpoints use Spring Data pagination.

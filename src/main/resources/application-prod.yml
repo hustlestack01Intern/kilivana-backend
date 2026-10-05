@@ -1,0 +1,100 @@
+# Profile for container and PaaS deployments (Render, Railway, Fly.io, docker compose).
+# Enable with SPRING_PROFILES_ACTIVE=prod
+#
+# The main risk behind a reverse proxy is losing the client IP. Every PaaS proxy
+# terminates the connection, so request.getRemoteAddr() returns the proxy address.
+# Without the settings below, that shared address is the only address there is, and
+# the two possible outcomes are both bad: the credential endpoints answer 503
+# CLIENT_IDENTITY_UNRESOLVED to everyone (the edge is not named below), or they are
+# rate limited as one platform-wide bucket (trust turned off). TRUSTED_PROXIES below
+# has NO default and MUST be set to this deployment's actual edge; there is no shipped
+# list that can be right, because the edge address is a property of the platform, not of
+# this repository. Do not weaken the prefix bounds to avoid naming it.
+server:
+  # Must stay off. Boot's FRAMEWORK strategy installs ForwardedHeaderFilter at
+  # Ordered.HIGHEST_PRECEDENCE, ahead of the security filter chain. It rewrites
+  # getRemoteAddr() from the *leftmost* client-supplied X-Forwarded-For entry and consumes
+  # the header, so ClientIpResolver never sees it and never gets to check the real socket
+  # peer against the trusted-proxy CIDR list below. Every rate-limit bucket would then be
+  # chosen by the caller, which defeats all four credential-abuse limits. ClientIpResolver
+  # performs its own right-to-left walk over that CIDR list, which is strictly safer than a
+  # blanket rewrite; leaving this on would pre-empt the check that makes it safe.
+  # An operator who genuinely needs the framework strategy can set
+  # FORWARD_HEADERS_STRATEGY, but the default is the one that cannot be spoofed.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
+
+kilivana:
+  security:
+    proxy:
+      # X-Forwarded-For is honoured only when the real socket peer matches
+      # trusted-proxies AND the header holds exactly trusted-proxy-hops addresses. Every proxy
+      # in front of this service appends exactly one entry, so a genuine chain's length is
+      # known in advance — and that is the whole defence. Checking only the shape is not
+      # enough: a client behind the edge can write "<any address>, <any private address>" and
+      # satisfy it, which is how a caller picks its own rate-limit bucket and disables all four
+      # credential limits. Counting catches a missing entry and an extra forged one alike.
+      #
+      # 1 is correct for Render, Railway and Fly.io, which each put exactly one edge in front.
+      # Raise it by one per additional proxy you add; never lower it to "make it work".
+      #
+      # The key is trusted-hop-count, not trusted-proxy-hops: it binds to the record component
+      # trustedHopCount. A key that does not map to a component is silently ignored, so a
+      # misspelling here leaves the accessor reading its own default with no warning anywhere.
+      trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:true}
+      trusted-hop-count: ${TRUSTED_PROXY_HOPS:1}
+      # REQUIRED, and there is deliberately no shipped default.
+      #
+      # This list previously shipped as loopback + RFC 1918 + RFC 4193 + link-local, which made
+      # every deployment boot. It also made every deployment wrong: a Render, Railway or Fly.io
+      # edge terminates the client connection at a PUBLIC address, and no shipped CIDR range
+      # contains one. So the list was satisfied by a value nobody had verified, no socket peer was
+      # ever trusted, and all four credential endpoints answered 503 CLIENT_IDENTITY_UNRESOLVED to
+      # every caller — permanently, and while /actuator/health/liveness stayed green, because
+      # /actuator is exempt from the limiter and therefore passed the deploy-time health gate.
+      #
+      # An absent list is now a FAILED DEPLOY, named by DeploymentEnvironmentValidator, instead of
+      # a silent outage. See docs/deploy/railway.md step 3 for what to put here and how to find it.
+      #
+      # ProxyProperties rejects anything wider than IPv4 /8 or IPv6 /16 at startup.
+      # TRUSTED_PROXIES=0.0.0.0/0 used to boot cleanly and quietly matched every peer on the
+      # internet; it is now a startup failure, because a limit that trusts everything limits
+      # nothing while still appearing to work.
+      #
+      # IPv6 private ranges matter: platforms hand out IPv6 private addresses, and omitting them
+      # degrades the deployment back to refusing every request as unattributable.
+      trusted-proxies: ${TRUSTED_PROXIES:}
+  media:
+    # Container filesystems are ephemeral. Mount a persistent volume (Render disk,
+    # Railway volume) or uploaded inspection evidence is lost on every deploy.
+    root-dir: ${MEDIA_ROOT:/data/uploads}
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  datasource:
+    hikari:
+      # Platforms recycle containers aggressively; keep the pool small enough to fit
+      # a free/starter instance and close connections the proxy may already have dropped.
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:10000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:600000}
+      # Must stay below max-lifetime. Hikari's default idle-timeout is 600000, the same as
+      # the max-lifetime above, and a pool whose idle-timeout is not shorter than its
+      # max-lifetime logs "disabling it" and silently keeps idle connections forever.
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:300000}
+      keepalive-time: ${DB_POOL_KEEPALIVE_MS:120000}
+#
+# MAIL_HOST is deliberately NOT defaulted here, and the mail health indicator stays off.
+# Two reasons, and they pull in opposite directions:
+#
+#  - The indicator is left off (application.yml) because a reachable health check that returns
+#    503 over an unreachable SMTP server takes the whole API out of rotation. Password reset
+#    being broken must not make the platform look down.
+#  - So misconfiguration is caught at STARTUP instead, by the deployment preflight, which fails
+#    the boot with a message naming MAIL_HOST. A deploy without mail cannot go live; a running
+#    instance whose relay later fails stays in rotation and simply stops delivering, which is
+#    the correct trade for an account-recovery path.

@@ -64,7 +64,7 @@ class InspectorAuthorizationIntegrationTest extends IntegrationTestSupport {
         AuthResponse inspector = signup(request("inspector@example.com", UserRole.INSPECTOR));
         AuthResponse other = privilegedSignup(request("other@example.com", UserRole.INSPECTOR));
         AuthResponse admin = readBody(mockMvc.perform(json(post("/api/v1/admins/signup")
-                .header("X-Admin-Bootstrap-Key", "test-admin-bootstrap-key"),
+                .header("X-Admin-Bootstrap-Key", "test-admin-bootstrap-key-at-least-32-chars-long"),
                 new AdminSignupRequest("admin@example.com", "secretPass1", "Admin", "+254700000099")))
                 .andExpect(status().isOk()).andReturn(), AuthResponse.class);
         ProductResponse product = createProduct(farmer.accessToken(), new CreateProductRequest(
