@@ -73,8 +73,22 @@ public class SecurityConfig {
                                     "/api/v1/auth/forgot-password",
                                     "/api/v1/auth/reset-password")
                             .permitAll();
+                    // Unconditional, and deliberately not gated on kilivana.security.google.enabled.
+                    // When the feature is off there is no controller behind these paths, so they
+                    // resolve to the 404 NoResourceFoundException branch below whatever this says.
+                    // Gating them instead would make the security surface change shape when a
+                    // feature flag is flipped, which is precisely when nobody is reading it.
+                    auth.requestMatchers(
+                                    HttpMethod.POST,
+                                    "/api/v1/auth/google",
+                                    "/api/v1/auth/google/verify-email",
+                                    "/api/v1/auth/google/onboard")
+                            .permitAll();
+                    // /link authenticates as an ordinary bearer call; the only thing that makes it
+                    // different is that it takes a password, which RateLimitFilter accounts for.
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/google/link").authenticated();
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/admins/signup").permitAll();
-                    auth.requestMatchers(HttpMethod.POST, "/api/v1/contact-messages", "/api/v1/webhooks/**").permitAll();
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/contact-messages").permitAll();
                     auth.requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll();
 
                     auth.requestMatchers(HttpMethod.GET, "/api/v1/products/mine", "/api/v1/products/saved").authenticated();

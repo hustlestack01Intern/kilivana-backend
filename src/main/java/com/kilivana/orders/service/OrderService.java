@@ -3,7 +3,6 @@ package com.kilivana.orders.service;
 import com.kilivana.addresses.domain.Address;
 import com.kilivana.addresses.repository.AddressRepository;
 import com.kilivana.common.event.OrderStatusChangedEvent;
-import com.kilivana.common.event.PaymentStatusChangedEvent;
 import com.kilivana.common.exception.BusinessConflictException;
 import com.kilivana.common.exception.ResourceNotFoundException;
 import com.kilivana.common.exception.UnauthorizedOperationException;
@@ -47,11 +46,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private static final Set<OrderStatus> SELLER_STATUSES = Set.of(
             OrderStatus.CONFIRMED,
@@ -301,7 +304,7 @@ public class OrderService {
         enforceSellerRules(order, actor, nextStatus);
         if (shouldReleaseReservedQuantity(order.getStatus(), nextStatus)) {
             releaseItems(items);
-            refundVerifiedPayments(order);
+            reportPaymentsAwaitingRefund(order);
         }
         OrderStatus previousStatus = order.getStatus();
         order.transitionTo(nextStatus);
@@ -345,7 +348,7 @@ public class OrderService {
         }
         List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
         releaseItems(items);
-        refundVerifiedPayments(order);
+        reportPaymentsAwaitingRefund(order);
         OrderStatus previousStatus = order.getStatus();
         order.transitionTo(OrderStatus.CANCELLED);
         eventPublisher.publishEvent(new OrderStatusChangedEvent(
@@ -362,18 +365,29 @@ public class OrderService {
                 .releaseQuantity(item.getQuantity()));
     }
 
-    private void refundVerifiedPayments(Order order) {
-        paymentRepository.findByOrderId(order.getId()).stream()
+    /**
+     * Cancellation cannot issue a refund. Marking a VERIFIED payment REFUNDED here was a lie
+     * on two counts: no gateway was called, so no money moved, and the trigger is reachable by
+     * the buyer, so any buyer could mint a "Refund issued" notification for money they kept.
+     * The payment is therefore left exactly as the gateway last reported it, and the
+     * unreconciled balance is logged for an operator holding a real gateway credential.
+     * Releasing the reserved listing quantity and the order transition are the parts of
+     * cancellation that are genuinely true, and both still happen.
+     */
+    private void reportPaymentsAwaitingRefund(Order order) {
+        List<Payment> unsettled = paymentRepository.findByOrderId(order.getId()).stream()
                 .filter(payment -> payment.getStatus() == PaymentStatus.VERIFIED)
-                .forEach(payment -> {
-                    payment.refund();
-                    eventPublisher.publishEvent(new PaymentStatusChangedEvent(
-                            payment.getId(),
-                            order.getId(),
-                            PaymentStatus.VERIFIED,
-                            PaymentStatus.REFUNDED,
-                            OffsetDateTime.now()));
-                });
+                .toList();
+        if (unsettled.isEmpty()) {
+            return;
+        }
+        BigDecimal owed = unsettled.stream()
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        log.warn("Order {} was cancelled with {} verified payment(s) totalling {} still unreconciled: "
+                        + "no authoritative gateway is configured, so no refund was issued and the payment "
+                        + "status is unchanged",
+                order.getId(), unsettled.size(), owed);
     }
 
     @Transactional

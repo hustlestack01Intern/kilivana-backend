@@ -100,9 +100,10 @@ public class LocalFileStorage implements MediaStorage {
                 throw invalid("Stored file is not available");
             }
             return new LimitedInputStream(Files.newInputStream(target), properties.maxFileSizeBytes());
-        } catch (MediaStorageException exception) {
-            throw exception;
         } catch (IOException exception) {
+            // Only IOException lands here. Both MediaStorageException (a real storage fault
+            // raised by resolve) and InvalidMediaException (a rejected request) are
+            // RuntimeExceptions and are siblings, so neither can be re-labelled as the other.
             throw new MediaStorageException("Failed to open stored file", exception);
         }
     }
@@ -112,8 +113,6 @@ public class LocalFileStorage implements MediaStorage {
         try {
             Path target = resolve(root(), storageKey);
             Files.deleteIfExists(target);
-        } catch (MediaStorageException exception) {
-            throw exception;
         } catch (IOException exception) {
             throw new MediaStorageException("Failed to delete stored file", exception);
         }
@@ -223,8 +222,8 @@ public class LocalFileStorage implements MediaStorage {
         return null;
     }
 
-    private MediaStorageException invalid(String message) {
-        return new MediaStorageException(message);
+    private InvalidMediaException invalid(String message) {
+        return new InvalidMediaException(message);
     }
 
     private record ImageType(String contentType, String extension) {

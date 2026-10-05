@@ -32,13 +32,12 @@ import com.kilivana.orders.domain.OrderStatus;
 import com.kilivana.payments.api.CreatePaymentRequest;
 import com.kilivana.payments.api.PaymentResponse;
 import com.kilivana.payments.domain.PaymentStatus;
-import com.kilivana.paymentgateway.api.PaymentWebhookRequest;
-import com.kilivana.paymentgateway.api.WebhookEventType;
 import com.kilivana.support.IntegrationTestSupport;
 import com.kilivana.users.domain.UserRole;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
@@ -270,7 +269,7 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    void gatewayWebhookShouldVerifyPendingPayment() throws Exception {
+    void unauthenticatedWebhookForgeryMustBeRejected() throws Exception {
         AuthResponse farmer = signup(farmerSignup("farmer-web@example.com", "Hill Farm", "Kericho"));
         AuthResponse supplier = signup(supplierSignup("supplier-web@example.com", "Western Foods"));
 
@@ -298,13 +297,17 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
         assertThat(payment.externalId()).isNotBlank();
         assertThat(payment.gatewayReference()).startsWith("MPESA-");
 
-        mockMvc.perform(post("/api/v1/webhooks/payments")
+        // The attack: a buyer forging a gateway settlement callback for their own payment.
+        // There is no authoritative gateway, so nothing may accept it. Asserted on 4xx rather
+        // than a specific code, because 401 (no longer permitAll) and 404 (no mapping) are both
+        // acceptable refusals and the security boundary is the absence of the effect, not the code.
+        mockMvc.perform(authorized(post("/api/v1/webhooks/payments"), supplier.accessToken())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsBytes(new PaymentWebhookRequest(
-                                WebhookEventType.VERIFIED,
-                                payment.externalId(),
-                                payment.gatewayReference()))))
-                .andExpect(status().isAccepted());
+                        .content(objectMapper.writeValueAsBytes(Map.of(
+                                "eventType", "VERIFIED",
+                                "externalId", payment.externalId(),
+                                "reference", payment.gatewayReference()))))
+                .andExpect(status().is4xxClientError());
 
         List<PaymentResponse> outbound = readBody(
                 mockMvc.perform(authorized(get("/api/v1/payments/outbound"), supplier.accessToken()))
@@ -312,9 +315,11 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
                         .andReturn(),
                 new com.fasterxml.jackson.core.type.TypeReference<>() {
                 });
+        // The invariant: a buyer can never self-verify. Only a settlement signal from an
+        // authoritative gateway may do that, and no such gateway is wired.
         assertThat(outbound).singleElement()
                 .extracting(PaymentResponse::status)
-                .isEqualTo(PaymentStatus.VERIFIED);
+                .isEqualTo(PaymentStatus.PENDING);
     }
 
     private AddressResponse createAddress(String accessToken, CreateAddressRequest request) throws Exception {
@@ -327,7 +332,7 @@ class FulfillmentExtensionsIntegrationTest extends IntegrationTestSupport {
 
     private AuthResponse adminSignup(String email) throws Exception {
         return readBody(mockMvc.perform(post("/api/v1/admins/signup")
-                        .header("X-Admin-Bootstrap-Key", "test-admin-bootstrap-key")
+                        .header("X-Admin-Bootstrap-Key", "test-admin-bootstrap-key-at-least-32-chars-long")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(
                                 new com.kilivana.admin.api.AdminSignupRequest(email, "secretPass1", "Root", "+254700000099"))))

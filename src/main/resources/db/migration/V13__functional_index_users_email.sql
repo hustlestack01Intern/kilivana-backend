@@ -1,0 +1,39 @@
+-- A functional index on upper(email), so the unauthenticated login lookup is not a sequential scan.
+--
+-- AuthService.login runs `findByEmailIgnoreCase(email)` BEFORE consuming the per-account budget,
+-- on an unauthenticated POST, on every attempt including wrong passwords. Spring Data renders that
+-- as `where upper(u1_0.email) = upper(?)`. The only thing on this column is
+-- `uq_users_email unique (email)` from V1, which is on the RAW value and therefore unusable for a
+-- predicate wrapped in upper(): Postgres cannot use it to find rows, so the planner has no choice
+-- but to read the whole table and filter. Measured with EXPLAIN ANALYZE at 20k rows: Seq Scan on
+-- users, Rows Removed by Filter: 19999, ~36ms.
+--
+-- It is an unauthenticated sequential scan of the customer table, reachable twice per attempt
+-- (once in AuthService and again in ApplicationUserDetailsService), and it runs before the
+-- limiter. Widening anything to avoid it is the wrong trade; indexing it is the cheap one.
+--
+-- Why a migration and not an index annotation: `spring.jpa.hibernate.ddl-auto` is `validate`, which
+-- never creates anything, so an annotation would be decoration. Flyway owns this schema.
+--
+-- Why upper(email) specifically rather than a citext column or a stored lower(email): the predicate
+-- is upper() on both sides because that is what the collation-safe query Spring Data generates, and
+-- a functional index has to match the expression the query actually uses. An index on lower(email)
+-- would not be used by an upper() predicate.
+--
+-- Uniqueness is NOT declared here, and must not be. upper() uses the database collation, which
+-- folds U+0131 DOTLESS I to ASCII I, so two rows that are distinct under `uq_users_email` can
+-- collide here — AuthService.login's canonical-key comment depends on exactly that folding. A
+-- unique index would fail to build on a database that already contains such a pair. This index is
+-- for lookup only.
+--
+-- `create index`, not `create index concurrently`: Flyway runs a PostgreSQL migration inside a
+-- transaction and CONCURRENTLY cannot run in one. The lock is a SHARE lock held for the build, so
+-- it blocks writes to `users` — signup and login — for the duration. On the users table this
+-- migration is for, that is a fraction of a second, which is a strictly better trade than a scan
+-- on every login. A table large enough for that to matter would want a two-step
+-- CREATE INDEX CONCURRENTLY run outside Flyway, and would need this file replaced with a no-op.
+--
+-- if not exists so a database where the index was created out of band still migrates. The name is
+-- the one the verification suite asserts, so the assertion cannot pass against a different object.
+
+create index if not exists idx_users_email_upper on users (upper(email));

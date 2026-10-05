@@ -68,6 +68,18 @@ public abstract class IntegrationTestSupport {
         REDIS_CONTAINER = redis;
     }
 
+    /**
+     * The container's endpoint as a {@code redis://} URI, the shape a platform injects.
+     *
+     * <p>A test that boots the prod profile has to declare its Redis endpoint the way a real
+     * deployment does. {@code REDIS_HOST} alone is not enough here: Testcontainers reports the
+     * Docker host as {@code localhost} on Colima and Desktop, which the preflight correctly
+     * refuses as loopback.
+     */
+    protected static String redisUrl() {
+        return "redis://" + REDIS_CONTAINER.getHost() + ":" + REDIS_CONTAINER.getMappedPort(6379);
+    }
+
     @Autowired
     protected MockMvc mockMvc;
 
@@ -91,12 +103,27 @@ public abstract class IntegrationTestSupport {
         registry.add("spring.datasource.url", POSTGRESQL_CONTAINER::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRESQL_CONTAINER::getUsername);
         registry.add("spring.datasource.password", POSTGRESQL_CONTAINER::getPassword);
-        registry.add("kilivana.security.jwt.secret", () -> "test-secret-key-that-is-at-least-thirty-two-bytes-long");
-        registry.add("kilivana.security.admin.bootstrap-key", () -> "test-admin-bootstrap-key");
+        // Deliberately NOT a value this repository has ever committed. The prod preflight
+        // refuses every JWT secret that appears anywhere in git history, and a test that boots
+        // the prod profile (see ForwardedHeaderBucketSpoofingIntegrationTest) would fail to
+        // start against a published one.
+        registry.add("kilivana.security.jwt.secret", () -> "integration-suite-jwt-secret-not-a-real-key");
+        // 32+ characters: the prod preflight refuses a shorter admin bootstrap key, and
+        // ForwardedHeaderBucketSpoofingIntegrationTest runs the whole context under prod.
+        registry.add("kilivana.security.admin.bootstrap-key",
+                () -> "test-admin-bootstrap-key-at-least-32-chars-long");
         registry.add("kilivana.media.root-dir",
                 () -> Path.of(System.getProperty("java.io.tmpdir"), "kilivana-uploads").toString());
+        // The raw variable, not just the bound property: the prod preflight reads REDIS_HOST to
+        // decide whether the rate limiter can reach anything other than loopback.
+        registry.add("REDIS_HOST", REDIS_CONTAINER::getHost);
         registry.add("spring.data.redis.host", REDIS_CONTAINER::getHost);
         registry.add("spring.data.redis.port", () -> String.valueOf(REDIS_CONTAINER.getMappedPort(6379)));
+        // Google sign-in off for the whole shared base class. Every test that needs it turns it
+        // on itself with its own @DynamicPropertySource, which Spring applies after this one, so
+        // a feature under test cannot leak its configuration into the other three hundred and
+        // thirty tests that share this context. See GoogleAuthIntegrationTest.
+        registry.add("kilivana.security.google.enabled", () -> "false");
     }
 
     @Autowired
@@ -109,6 +136,8 @@ public abstract class IntegrationTestSupport {
     void cleanDatabase() {
         jdbcTemplate.execute("""
                 truncate table
+                    email_verification_tokens,
+                    user_identities,
                     tracking_events,
                     logistics_jobs,
                     visit_photos,

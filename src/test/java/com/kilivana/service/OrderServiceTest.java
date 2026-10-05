@@ -268,7 +268,7 @@ class OrderServiceTest {
     }
 
     @Test
-    void cancellingOrderAutoRefundsVerifiedPayments() {
+    void cancellingOrderLeavesVerifiedPaymentUnreconciledRatherThanRefundingIt() {
         Payment verifiedPayment = new Payment(order, PaymentStatus.VERIFIED, "MPESA",
                 new BigDecimal("1062.50"), "idem-key");
         stubOrderLookup(order);
@@ -279,7 +279,11 @@ class OrderServiceTest {
 
         orderService.cancel(orderId);
 
-        assertThat(verifiedPayment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        // The invariant: a payment may only become REFUNDED on an authoritative gateway
+        // instruction. Cancellation is buyer-driven and calls no gateway, so the previous
+        // behaviour — flipping to REFUNDED here — let any buyer fabricate a refund and a
+        // "Refund issued" notification for money they still held.
+        assertThat(verifiedPayment.getStatus()).isEqualTo(PaymentStatus.VERIFIED);
     }
 
     @Test
