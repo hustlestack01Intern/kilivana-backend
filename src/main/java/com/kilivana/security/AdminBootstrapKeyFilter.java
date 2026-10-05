@@ -51,6 +51,10 @@ public class AdminBootstrapKeyFilter extends OncePerRequestFilter {
         if (contextPath != null && !contextPath.isBlank() && path.startsWith(contextPath)) {
             path = path.substring(contextPath.length());
         }
+        int semicolon = path.indexOf(';');
+        if (semicolon >= 0) {
+            path = path.substring(0, semicolon);
+        }
         return BOOTSTRAP_PATH.equals(path);
     }
 

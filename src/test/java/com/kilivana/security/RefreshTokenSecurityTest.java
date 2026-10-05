@@ -53,6 +53,9 @@ class RefreshTokenSecurityTest {
     @Mock
     private EntityManager entityManager;
 
+    @Mock
+    private RateLimiter rateLimiter;
+
     private AuthService authService;
     private TokenService tokenService;
     private User user;
@@ -86,7 +89,10 @@ class RefreshTokenSecurityTest {
                 jwtService,
                 new JwtProperties("issuer", "audience", 15, 14, "a-very-long-high-entropy-secret-value-123456"),
                 tokenService,
-                entityManager);
+                entityManager,
+                rateLimiter,
+                new com.kilivana.security.config.RateLimitProperties(
+                        true, "memory", 5, 5, 3, 3, 10, 5, 5, 5, 10, 15, 100));
     }
 
     @Test

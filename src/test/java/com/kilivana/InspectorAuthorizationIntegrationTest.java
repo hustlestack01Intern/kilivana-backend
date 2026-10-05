@@ -29,8 +29,22 @@ class InspectorAuthorizationIntegrationTest extends IntegrationTestSupport {
     @Autowired InspectionRepository inspections;
 
     private SignupRequest request(String email, UserRole role) {
-        return new SignupRequest(email, "secretPass1", "Test User", "+254700000001", role,
-                "Business", "Farm", "Nairobi", "employee", null, null, null, null);
+        return new SignupRequest(
+                email,
+                "secretPass1",
+                "Test User",
+                com.kilivana.support.TestAccounts.nextPhone(),
+                "test_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 25),
+                "Nairobi",
+                role,
+                "Business",
+                "Farm",
+                null,
+                "employee",
+                null,
+                null,
+                null,
+                null);
     }
 
     private MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder builder, Object body) throws Exception {
@@ -50,7 +64,7 @@ class InspectorAuthorizationIntegrationTest extends IntegrationTestSupport {
         AuthResponse inspector = signup(request("inspector@example.com", UserRole.INSPECTOR));
         AuthResponse other = privilegedSignup(request("other@example.com", UserRole.INSPECTOR));
         AuthResponse admin = readBody(mockMvc.perform(json(post("/api/v1/admins/signup")
-                .header("X-Admin-Bootstrap-Key", "test-admin-bootstrap-key"),
+                .header("X-Admin-Bootstrap-Key", "test-admin-bootstrap-key-at-least-32-chars-long"),
                 new AdminSignupRequest("admin@example.com", "secretPass1", "Admin", "+254700000099")))
                 .andExpect(status().isOk()).andReturn(), AuthResponse.class);
         ProductResponse product = createProduct(farmer.accessToken(), new CreateProductRequest(

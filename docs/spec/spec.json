@@ -219,29 +219,6 @@
     }
    }
   },
-  "/api/v1/webhooks/payments": {
-   "post": {
-    "tags": [
-     "payment-webhook-controller"
-    ],
-    "operationId": "handle",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/PaymentWebhookRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "description": "OK"
-     }
-    }
-   }
-  },
   "/api/v1/site-visits": {
    "get": {
     "tags": [
@@ -1665,6 +1642,8 @@
     "tags": [
      "auth-controller"
     ],
+    "summary": "Register a public account",
+    "description": "Signup and register are aliases. Public roles: BUYER, FARMER, SUPPLIER, INSPECTOR. Inspectors require employeeCode and start ACTIVE with PENDING verification. Tokens allow authentication, but Inspector privileges require Admin verification.",
     "operationId": "signup",
     "requestBody": {
      "content": {
@@ -1687,9 +1666,7 @@
        }
       }
      }
-    },
-    "summary": "Register a public account",
-    "description": "Signup and register are aliases. Public roles: BUYER, FARMER, SUPPLIER, INSPECTOR. Inspectors require employeeCode and start ACTIVE with PENDING verification. Tokens allow authentication, but Inspector privileges require Admin verification."
+    }
    }
   },
   "/api/v1/auth/register": {
@@ -1697,6 +1674,8 @@
     "tags": [
      "auth-controller"
     ],
+    "summary": "Register a public account",
+    "description": "Signup and register are aliases. Public roles: BUYER, FARMER, SUPPLIER, INSPECTOR. Inspectors require employeeCode and start ACTIVE with PENDING verification. Tokens allow authentication, but Inspector privileges require Admin verification.",
     "operationId": "signup_1",
     "requestBody": {
      "content": {
@@ -1719,9 +1698,7 @@
        }
       }
      }
-    },
-    "summary": "Register a public account",
-    "description": "Signup and register are aliases. Public roles: BUYER, FARMER, SUPPLIER, INSPECTOR. Inspectors require employeeCode and start ACTIVE with PENDING verification. Tokens allow authentication, but Inspector privileges require Admin verification."
+    }
    }
   },
   "/api/v1/auth/refresh": {
@@ -1782,6 +1759,8 @@
     "tags": [
      "auth-controller"
     ],
+    "summary": "Login using email or Kenyan phone",
+    "description": "identifier accepts email or a Kenyan phone number. Username is not a login identifier.",
     "operationId": "login",
     "requestBody": {
      "content": {
@@ -3691,7 +3670,18 @@
       "type": "string"
      },
      "phoneNumber": {
-      "maxLength": 20,
+      "maxLength": 40,
+      "minLength": 0,
+      "type": "string"
+     },
+     "username": {
+      "maxLength": 30,
+      "minLength": 3,
+      "type": "string",
+      "pattern": "[a-z][a-z0-9_]{2,29}"
+     },
+     "region": {
+      "maxLength": 200,
       "minLength": 0,
       "type": "string"
      },
@@ -3708,7 +3698,9 @@
      "farmLocation": {
       "maxLength": 200,
       "minLength": 0,
-      "type": "string"
+      "type": "string",
+      "description": "Farmer compatibility alias for region. If both are supplied, their trimmed values must match.",
+      "deprecated": true
      },
      "vehicleType": {
       "maxLength": 100,
@@ -3735,6 +3727,15 @@
       "format": "uuid"
      },
      "email": {
+      "type": "string"
+     },
+     "username": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 30,
+      "pattern": "[a-z][a-z0-9_]{2,29}"
+     },
+     "region": {
       "type": "string"
      },
      "fullName": {
@@ -4004,29 +4005,6 @@
      },
      "isDefault": {
       "type": "boolean"
-     }
-    }
-   },
-   "PaymentWebhookRequest": {
-    "required": [
-     "eventType",
-     "externalId",
-     "reference"
-    ],
-    "type": "object",
-    "properties": {
-     "eventType": {
-      "type": "string",
-      "enum": [
-       "VERIFIED",
-       "FAILED"
-      ]
-     },
-     "externalId": {
-      "type": "string"
-     },
-     "reference": {
-      "type": "string"
      }
     }
    },
@@ -5204,7 +5182,9 @@
      "fullName",
      "password",
      "phoneNumber",
-     "role"
+     "region",
+     "role",
+     "username"
     ],
     "type": "object",
     "properties": {
@@ -5222,9 +5202,22 @@
       "type": "string"
      },
      "phoneNumber": {
-      "maxLength": 20,
+      "maxLength": 40,
       "minLength": 0,
       "type": "string"
+     },
+     "username": {
+      "maxLength": 30,
+      "minLength": 3,
+      "type": "string",
+      "description": "Globally unique; trimmed and lowercased using Locale.ROOT. 3-30 characters; first character is a lowercase ASCII letter, remaining characters are lowercase ASCII letters, digits or underscore. Not a login identifier.",
+      "pattern": "[a-z][a-z0-9_]{2,29}"
+     },
+     "region": {
+      "maxLength": 200,
+      "minLength": 0,
+      "type": "string",
+      "description": "Required for every public role; trimmed, nonblank region of at most 200 characters."
      },
      "role": {
       "type": "string",
@@ -5249,7 +5242,9 @@
      "farmLocation": {
       "maxLength": 200,
       "minLength": 0,
-      "type": "string"
+      "type": "string",
+      "description": "Optional Farmer compatibility field; must match region when supplied.",
+      "deprecated": true
      },
      "employeeCode": {
       "maxLength": 100,
@@ -5287,6 +5282,18 @@
       "format": "uuid"
      },
      "email": {
+      "type": "string"
+     },
+     "username": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 30,
+      "pattern": "[a-z][a-z0-9_]{2,29}"
+     },
+     "region": {
+      "type": "string"
+     },
+     "phoneNumber": {
       "type": "string"
      },
      "fullName": {
@@ -5352,12 +5359,14 @@
    },
    "LoginRequest": {
     "required": [
-     "email",
+     "identifier",
      "password"
     ],
     "type": "object",
     "properties": {
-     "email": {
+     "identifier": {
+      "maxLength": 120,
+      "minLength": 0,
       "type": "string"
      },
      "password": {

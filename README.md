@@ -36,8 +36,9 @@
 export DB_URL=jdbc:postgresql://localhost:5432/kilivana
 export DB_USERNAME=postgres
 export DB_PASSWORD=postgres
-export JWT_SECRET=change-me-to-a-long-random-secret-min-32-bytes
-export ADMIN_BOOTSTRAP_KEY=some-long-bootstrap-key
+# Both must be at least 32 characters; `prod` refuses to start otherwise.
+export JWT_SECRET=$(openssl rand -base64 32)
+export ADMIN_BOOTSTRAP_KEY=$(openssl rand -hex 24)
 ```
 
 ### 2. Run
@@ -46,7 +47,7 @@ export ADMIN_BOOTSTRAP_KEY=some-long-bootstrap-key
 ./mvnw spring-boot:run
 ```
 
-Flyway automatically applies all 10 migrations (`V1`–`V10`) on startup. The API is now live at `http://localhost:8080/api/v1`.
+Flyway automatically applies all 17 migrations (`V1`–`V17`) on startup. The API is now live at `http://localhost:8080/api/v1`.
 
 ### 3. Create the first admin
 
@@ -54,7 +55,7 @@ Flyway automatically applies all 10 migrations (`V1`–`V10`) on startup. The AP
 curl -X POST http://localhost:8080/api/v1/admins/signup \
   -H "X-Admin-Bootstrap-Key: $ADMIN_BOOTSTRAP_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"changeit123","fullName":"Admin","phoneNumber":"+254700000000"}'
+  -d '{"identifier":"admin@example.com","password":"changeit123","fullName":"Admin","phoneNumber":"+254700000000"}'
 ```
 
 ### 4. Log in
@@ -62,7 +63,7 @@ curl -X POST http://localhost:8080/api/v1/admins/signup \
 ```bash
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"changeit123"}'
+  -d '{"identifier":"admin@example.com","password":"changeit123"}'
 ```
 
 You'll get back an `accessToken` (lasts 15 minutes) and a `refreshToken` (lasts 14 days). Use the access token in all subsequent requests:
@@ -94,8 +95,8 @@ The project is a **modular monolith**: each feature area is a self-contained mod
 | `addresses` | Delivery and pickup addresses with optional GPS coordinates |
 | `products` | Product catalog, categories, images, seller type (FARMER/SUPPLIER), stock management, moderation |
 | `orders` | Shopping cart, multi-seller checkout, order state machine, stock reservation, delivery fee calculation |
-| `payments` | Payment lifecycle (create → verify → refund), idempotency keys |
-| `paymentgateway` | Payment provider abstraction (M-PESA stub), idempotent webhook processing |
+| `payments` | Payment lifecycle (create → verify → fail → refund), idempotency keys. Refunds are refused against the simulated gateway |
+| `paymentgateway` | Payment provider abstraction. `SimulatedPaymentGateway` is non-authoritative: it moves no money and there is no webhook endpoint |
 | `logistics` | Delivery jobs, driver assignment/acceptance, status tracking, GPS events, proof of delivery |
 | `inspection` | Quality inspections with configurable checklists, site visits, audit reports, photos |
 | `badges` | Trust badges (e.g., "Quality Harvest"), auto-awarded on passed inspections |
@@ -119,6 +120,8 @@ Kilivana uses **JWT (HS256)** with a two-token system:
 | **Access token** | 15 minutes | Sent as `Authorization: Bearer <token>` on every API request |
 | **Refresh token** | 14 days | Exchanged for a new access token when the old one expires |
 
+See [the account/auth contract](docs/account-auth-contract.md) for signup fields, identity rules, profile updates, compatibility and V11 deployment details. Login accepts `identifier` (email or Kenyan phone), never username.
+
 ### The four core auth schemas
 
 These are the exact JSON shapes the Android/iOS clients need (also in `auth-schemas-json.txt` and `auth-schemas-for-android.txt`):
@@ -127,7 +130,7 @@ These are the exact JSON shapes the Android/iOS clients need (also in `auth-sche
 
 ```json
 {
-  "email": "user@example.com",
+  "identifier": "user@example.com",
   "password": "password123"
 }
 ```
@@ -138,8 +141,12 @@ These are the exact JSON shapes the Android/iOS clients need (also in `auth-sche
 {
   "userId": "550e8400-e29b-41d4-a716-446655440000",
   "email": "user@example.com",
+  "username": "jane_farmer",
+  "region": "Kiambu",
+  "phoneNumber": "+254712345678",
   "fullName": "Jane Farmer",
   "role": "FARMER",
+  "verificationStatus": "UNVERIFIED",
   "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
   "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
   "refreshTokenExpiresAt": "2026-10-12T10:00:00Z"
@@ -173,7 +180,7 @@ Revokes the entire refresh token family. Returns `200 OK` with no body.
 ```
 Client                          Server
   |                               |
-  |-- POST /auth/login ---------->|  (email + password)
+  |-- POST /auth/login ---------->|  (email or phone identifier + password)
   |<- accessToken + refreshToken -|
   |                               |
   |-- GET /products ------------->|  (Bearer accessToken)
@@ -194,7 +201,7 @@ Client                          Server
 
 | Endpoint | Description |
 |---|---|
-| `POST /api/v1/auth/signup` | Public registration (buyer/supplier/farmer) |
+| `POST /api/v1/auth/signup` | Public registration (buyer/supplier/farmer/inspector) |
 | `POST /api/v1/auth/forgot-password` | Request a password reset email |
 | `POST /api/v1/auth/reset-password` | Reset password with token from email |
 | `GET /api/v1/auth/me` | Get current user's profile (requires auth) |
@@ -259,8 +266,9 @@ All endpoints are prefixed with `/api/v1`. All request/response bodies are JSON.
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | POST | `/payments` | Buyer | Create payment (idempotent) |
-| POST | `/payments/verify` | Buyer | Verify payment |
-| POST | `/payments/webhook` | Public | Gateway webhook (idempotent) |
+| POST | `/payments/verify` | Seller | Verify payment |
+| POST | `/payments/{id}/fail` | Seller | Mark payment failed |
+| POST | `/payments/{id}/refund` | Seller | Refund — always refused while the gateway is simulated |
 
 ### Logistics (`/logistics`)
 
@@ -325,7 +333,7 @@ src/main/java/com/kilivana/
 ### State machines (enforced server-side)
 
 **Order:** `PLACED → CONFIRMED → READY_FOR_PICKUP → IN_PROGRESS → DELIVERED → COMPLETED`
-Also: `CANCELLED`, `REJECTED` (with automatic stock release + refund)
+Also: `CANCELLED`, `REJECTED` (with automatic stock release). Neither issues a refund: with no authoritative gateway configured, a `VERIFIED` payment is left **unreconciled** — status unchanged — and a WARN line is logged for an operator.
 
 **Logistics Job:** `PENDING_ACCEPTANCE → ACCEPTED → AT_PICKUP → PICKED_UP → IN_TRANSIT → DELIVERED`
 Also: `FAILED`, `CANCELLED`
@@ -333,6 +341,7 @@ Also: `FAILED`, `CANCELLED`
 **Inspection:** `SCHEDULED → IN_PROGRESS → PASSED` or `FAILED`
 
 **Payment:** `PENDING → VERIFIED` or `FAILED`; `VERIFIED → REFUNDED`
+A payment only reaches `VERIFIED` through a manual seller action on `POST /payments/verify`. There is no gateway callback, because the only gateway this deployment ships (`SimulatedPaymentGateway`) is non-authoritative and moves no money. `POST /payments/{id}/refund` is refused with a behavioural error for the same reason.
 
 **Site Visit:** `REQUESTED → SCHEDULED → COMPLETED` or `REJECTED`
 
@@ -357,7 +366,8 @@ One checkout creates a single `CustomerOrder` that is automatically split into p
 ### Idempotency
 
 - **Payments** — idempotent per `idempotencyKey` (safe to retry)
-- **Webhooks** — idempotent per `externalId` under a pessimistic row lock (safe for duplicate gateway callbacks)
+
+There is no webhook. An unsigned, unauthenticated `POST /payments/webhook` was deleted: no gateway would ever have sent it, so the only behaviour it could have was accepting a forgery.
 
 ### Domain events
 
@@ -367,7 +377,7 @@ Order, payment, logistics, inspection, and contact events are published asynchro
 
 ## Database & Migrations
 
-PostgreSQL schema is managed by **Flyway** (10 migrations, applied automatically on startup):
+PostgreSQL schema is managed by **Flyway** (17 migrations, applied automatically on startup):
 
 | Migration | What it creates |
 |---|---|
@@ -381,6 +391,13 @@ PostgreSQL schema is managed by **Flyway** (10 migrations, applied automatically
 | V8 | Notifications, disputes, audit logs |
 | V9 | Delivery fees, order totals |
 | V10 | Refresh token family ID (for rotation tracking) |
+| V11 | Canonical username, common region, normalized unique Kenyan phones (Java migration) |
+| V12 | Payment verification attribution (`verified_by_user_id`, `verified_at`) |
+| V13 | Functional index on `upper(email)` so the login lookup is not a sequential scan |
+| V14 | Email verification tokens |
+| V15 | Google `user_identities` (`google` provider, subject, verified identity) |
+| V16 | Nullable `password_hash` (Google-only accounts) and `email_verified_at` |
+| V17 | Partial unique index: at most one `PENDING` payment per order |
 
 ---
 
@@ -412,7 +429,7 @@ Integration tests use **Testcontainers** to spin up real PostgreSQL 16 and Redis
 - Auth flow (signup → refresh → logout with token rotation)
 - Admin flow (bootstrap signup → dashboard → user management)
 - Trust & fulfillment flow (order → logistics → inspection → badges → delivery)
-- Extended fulfillment (contact messages, site visits, audit reports, webhooks)
+- Extended fulfillment (contact messages, site visits, audit reports, forged-payment-webhook refusal)
 
 > **Colima users:** Set `DOCKER_HOST` to the Colima socket path. Ryuk (Testcontainers' cleanup reaper) is disabled automatically in the surefire config because Colima's VM doesn't support bind-mounting the Docker socket.
 
@@ -443,8 +460,11 @@ All three communicate with the backend at `/api/v1`. See `client/README.md` for 
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/kilivana` | PostgreSQL JDBC URL |
-| `DB_USERNAME` / `DB_PASSWORD` | `postgres` / `postgres` | Database credentials |
+| `PORT` | *(falls back to `SERVER_PORT`, then `8080`)* | Railway injects `PORT` at runtime and routes to it. Ignored when unset, so `SERVER_PORT` still works locally |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/kilivana` | PostgreSQL JDBC URL. A `postgres://` URI is accepted and rewritten |
+| `DATABASE_URL` | *(falls back to `DB_URL`)* | Railway / Heroku name the platform variable this; the driver needs the `jdbc:` form |
+| `DB_USERNAME` / `DB_PASSWORD` | `postgres` / `postgres` | Database credentials. Recovered from `DB_URL` when unset |
+| `REDIS_URL` | *(empty)* | `redis://` URI supplied by Railway / Fly.io / Heroku; Spring Boot parses it and prefers it over the pair below |
 | `REDIS_HOST` / `REDIS_PORT` | `localhost` / `6379` | Redis for caching + rate limiting |
 | `JWT_SECRET` | *(empty — required in prod)* | HS256 signing secret (min 32 bytes) |
 | `JWT_ACCESS_TOKEN_MINUTES` | `15` | Access token TTL |
@@ -452,12 +472,31 @@ All three communicate with the backend at `/api/v1`. See `client/README.md` for 
 | `ADMIN_BOOTSTRAP_KEY` | *(empty — admin signup disabled)* | Enables `POST /admins/signup` |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:5173` | Allowed web origins |
 | `RATE_LIMIT_ENABLED` | `true` | Enable rate limiting |
-| `MEDIA_ROOT` | `./uploads` | Local file storage root |
+| `MEDIA_ROOT` | `./uploads` (`/data/uploads` under `prod`) | Local file storage root |
 | `PASSWORD_RESET_URL` | `http://localhost:3000/reset-password` | Link in reset emails |
 | `OPENAPI_ENABLED` / `SWAGGER_ENABLED` | `false` | Expose API docs |
 | `DOCKER_HOST` | *(auto-detected)* | Docker socket path (for tests) |
 
-Full configuration: `src/main/resources/application.yml`.
+Full configuration: `src/main/resources/application.yml`, plus `application-prod.yml` for
+container and PaaS deployments.
+
+### Deploying
+
+`SPRING_PROFILES_ACTIVE=prod` turns on the settings a reverse proxy needs, most importantly
+client-IP forwarding. Without them every request keys on the proxy's address and the whole
+platform shares one rate-limit bucket.
+
+| Platform | How to deploy |
+|---|---|
+| Render | `render.yaml` is a Blueprint — New → Blueprint → pick the repo. It creates the Postgres and Redis instances, a disk mounted at `/data/uploads`, and generates `JWT_SECRET` and `ADMIN_BOOTSTRAP_KEY`. |
+| Railway | Build from `Dockerfile`; the PostgreSQL and Redis plugins supply `DATABASE_URL` and `REDIS_URL`. There is no `railway.toml` — configuration is done in the dashboard. Follow the step-by-step checklist in **[docs/deploy/railway.md](docs/deploy/railway.md)**, which lists every required variable, the `/data/uploads` volume and the `RAILWAY_RUN_UID=0` mount-ownership fix. |
+| Docker | `docker compose up` brings up Postgres, Redis and the API with `prod` active. It ships **no secret**: generate the two required values first, or Compose refuses to start the container —
+
+  ```bash
+  export JWT_SECRET=$(openssl rand -base64 32)
+  export ADMIN_BOOTSTRAP_KEY=$(openssl rand -hex 24)
+  docker compose up
+  ``` |
 
 ---
 
@@ -487,7 +526,7 @@ KILIVANA/
 │   │   │   └── common/         ← Shared infrastructure
 │   │   └── resources/
 │   │       ├── application.yml ← Main configuration
-│   │       └── db/migration/   ← Flyway migrations (V1–V10)
+│   │       └── db/migration/   ← Flyway migrations (V1–V17)
 │   └── test/java/com/kilivana/ ← 80 tests (unit + integration)
 ├── client/
 │   ├── mobile/                 ← React Native (Expo) main app

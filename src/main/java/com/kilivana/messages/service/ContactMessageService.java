@@ -38,7 +38,11 @@ public class ContactMessageService {
     public ContactMessageResponse submit(ContactMessageRequest request) {
         ContactMessage message = new ContactMessage(
                 request.name().trim(),
-                request.email().trim().toLowerCase(),
+                // Locale.ROOT, not the default locale: in a Turkish locale the default maps
+                // 'I' to dotless 'ı', so "INFO@x.com" and "info@x.com" would canonicalise to two
+                // different addresses and break any later match on the stored value. Every other
+                // email normalisation in this codebase already does this; this one did not.
+                request.email().trim().toLowerCase(java.util.Locale.ROOT),
                 request.subject().trim(),
                 request.body().trim());
         contactMessageRepository.save(message);

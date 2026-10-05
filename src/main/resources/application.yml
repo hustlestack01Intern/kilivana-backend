@@ -2,7 +2,10 @@ spring:
   application:
     name: kilivana-backend
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/kilivana}
+    # Railway and Heroku name the platform-injected variable DATABASE_URL; Render's
+    # Blueprint maps its connection string to DB_URL. Both accept a postgres:// URI,
+    # which JdbcUrlConfiguration rewrites into a jdbc:postgresql: URL.
+    url: ${DB_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/kilivana}}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
   jpa:
@@ -14,6 +17,11 @@ spring:
         format_sql: true
   data:
     redis:
+      # REDIS_URL is what Railway, Fly.io and Heroku inject. It is deliberately NOT
+      # bound here: a ${REDIS_URL:} placeholder yields an empty string, and Spring Boot
+      # rejects any non-null spring.data.redis.url whose scheme is not redis/rediss, so
+      # the application would fail to start wherever the variable is absent. The
+      # RedisUrlConfiguration post-processor contributes the property only when set.
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       connect-timeout: ${REDIS_CONNECT_TIMEOUT:1s}
@@ -42,7 +50,12 @@ spring:
       file-size-threshold: 0
 
 server:
-  port: ${SERVER_PORT:8080}
+  # PORT first, SERVER_PORT second. Railway injects PORT at *runtime only* — it is not an
+  # ARG and not present at build time — and routes traffic to whatever that port says.
+  # Binding only SERVER_PORT therefore leaves the process listening on 8080 while Railway
+  # routes to $PORT, and the deployment dies with a 502 "Application Failed to Respond"
+  # that names nothing the operator changed. SERVER_PORT keeps its place for local runs.
+  port: ${PORT:${SERVER_PORT:8080}}
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:NONE}
   servlet:
     context-path: /
@@ -72,17 +85,61 @@ kilivana:
     proxy:
       trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
       trusted-proxies: ${TRUSTED_PROXIES:}
+      # Declared here so the key is visible outside the prod profile. Binds to the record
+      # component trustedHopCount — the name must match the component or it is silently
+      # dropped and the accessor falls back to its own default.
+      trusted-hop-count: ${TRUSTED_PROXY_HOPS:1}
     docs:
       public: ${OPENAPI_PUBLIC:false}
     rate-limit:
       enabled: ${RATE_LIMIT_ENABLED:true}
       backend: ${RATE_LIMIT_BACKEND:redis}
-      requests-per-minute: ${RATE_LIMIT_REQUESTS_PER_MINUTE:30}
+      # No general rate limit. These four credential-abuse rules are the only ones applied;
+      # every other path is unthrottled, because this filter runs before authentication and
+      # can only key on the client IP. See RateLimitFilter.
       login-requests-per-minute: ${RATE_LIMIT_LOGIN_PER_MINUTE:5}
       registration-requests-per-minute: ${RATE_LIMIT_REGISTER_PER_MINUTE:5}
       forgot-password-requests-per-minute: ${RATE_LIMIT_FORGOT_PER_MINUTE:3}
       admin-bootstrap-requests-per-minute: ${RATE_LIMIT_ADMIN_BOOTSTRAP_PER_MINUTE:3}
+      # Keyed on the ACCOUNT, not the address, and enforced inside AuthService rather than by
+      # the filter. Every limit above is keyed on a client address this service had to derive
+      # from a proxy header, so every one of them is only as trustworthy as the edge in front of
+      # this service: forge or rotate the address and they all reset. This one cannot be, because
+      # the key is a SHA-256 of the submitted email and no header produces it. It is the limit
+      # that still holds when the address derivation above is wrong, so it is the one that must
+      # never be widened to "make logins work".
+      # The Google surface, applied by exact path in RateLimitFilter and nowhere else.
+      # google-handshake is the widest door here: unauthenticated, and on a key miss it
+      # reaches Google's HTTPS endpoint. google-link takes a password, so it is held to
+      # the login budget rather than given a budget of its own.
+      google-handshake-requests-per-minute: ${RATE_LIMIT_GOOGLE_HANDSHAKE_PER_MINUTE:10}
+      google-verify-email-requests-per-minute: ${RATE_LIMIT_GOOGLE_VERIFY_EMAIL_PER_MINUTE:5}
+      google-onboard-requests-per-minute: ${RATE_LIMIT_GOOGLE_ONBOARD_PER_MINUTE:5}
+      google-link-requests-per-minute: ${RATE_LIMIT_GOOGLE_LINK_PER_MINUTE:5}
+      login-attempts-per-account-per-window: ${RATE_LIMIT_LOGIN_PER_ACCOUNT:10}
+      login-account-window-minutes: ${RATE_LIMIT_LOGIN_ACCOUNT_WINDOW_MINUTES:15}
       max-local-keys: ${RATE_LIMIT_MAX_LOCAL_KEYS:10000}
+    google:
+      # Off until an operator turns it on. While false, no Google bean exists and the three
+      # unauthenticated paths resolve to 404, so the surface is absent rather than inert.
+      enabled: ${KILIVANA_SECURITY_GOOGLE_ENABLED:false}
+      client-ids: ${GOOGLE_CLIENT_ID:}
+      # A signal for an administrator, never an approval: `hd` proves the mailbox is on an
+      # organisation's domain, not that the person holds a role there. An inspector still
+      # starts PENDING.
+      inspector-hosted-domains: ${GOOGLE_INSPECTOR_DOMAINS:}
+      verification-token-ttl: ${GOOGLE_VERIFICATION_TOKEN_TTL:PT15M}
+      onboarding-ticket-ttl: ${GOOGLE_ONBOARDING_TICKET_TTL:PT10M}
+      frontend-url: ${FRONTEND_URL:http://localhost:3000/verify-email}
+      # Cooldown on the per-recipient and per-identity send budgets. Never refunded: a
+      # refused send still cost an attempt.
+      send-cooldown-seconds: ${GOOGLE_SEND_COOLDOWN_SECONDS:60}
+      # The only ceiling that holds when an attacker rotates both addresses and identities,
+      # and the one budget that ignores rate-limit.enabled — a limiter that can be turned
+      # off is not a ceiling.
+      global-sends-per-minute: ${GOOGLE_GLOBAL_SENDS_PER_MINUTE:30}
+      # Refused on the prod profile by both GoogleProperties and the deployment preflight.
+      simulate-delivery: ${KILIVANA_SECURITY_GOOGLE_SIMULATE_DELIVERY:false}
   media:
     root-dir: ${MEDIA_ROOT:./uploads}
     max-file-size-bytes: ${MEDIA_MAX_FILE_BYTES:5242880}
@@ -103,7 +160,27 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,redis
+  health:
+    mail:
+      # SMTP is an optional integration. Left enabled, an unconfigured or unreachable
+      # mail server makes /actuator/health return 503 and fails every platform
+      # health check, taking the whole API out of rotation.
+      enabled: ${MAIL_HEALTH_ENABLED:false}
 
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%X{requestId}] %-5level %logger{36} - %msg%n"
+  level:
+    # Spring Security warns that a UserDetailsService bean "will not be used" whenever an
+    # AuthenticationProvider bean also exists. Here the provider is a DaoAuthenticationProvider
+    # that is handed this very service through setUserDetailsService, so it is used: the
+    # heuristic only detects an unwired bean. Silence this one logger rather than leave a
+    # permanent false alarm that teaches everyone to ignore WARN.
+    org.springframework.security.config.annotation.authentication.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer: ERROR
