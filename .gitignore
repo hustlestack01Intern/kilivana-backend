@@ -24,3 +24,11 @@ dist/
 
 # Local uploads / media
 uploads/
+
+# Agent tooling (local only). These are single-developer workflow aids, not application
+# configuration: they contain no runtime dependency of the backend and no deployable state.
+# Left unignored they would be swept into a `git add -A` and published, because the repo is
+# public and anything committed here is world-readable.
+.magician/
+.opencode/
+opencode.json

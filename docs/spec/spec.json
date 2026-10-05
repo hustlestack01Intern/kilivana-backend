@@ -219,29 +219,6 @@
     }
    }
   },
-  "/api/v1/webhooks/payments": {
-   "post": {
-    "tags": [
-     "payment-webhook-controller"
-    ],
-    "operationId": "handle",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/PaymentWebhookRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "description": "OK"
-     }
-    }
-   }
-  },
   "/api/v1/site-visits": {
    "get": {
     "tags": [
@@ -4004,29 +3981,6 @@
      },
      "isDefault": {
       "type": "boolean"
-     }
-    }
-   },
-   "PaymentWebhookRequest": {
-    "required": [
-     "eventType",
-     "externalId",
-     "reference"
-    ],
-    "type": "object",
-    "properties": {
-     "eventType": {
-      "type": "string",
-      "enum": [
-       "VERIFIED",
-       "FAILED"
-      ]
-     },
-     "externalId": {
-      "type": "string"
-     },
-     "reference": {
-      "type": "string"
      }
     }
    },
