@@ -1,7 +1,6 @@
 package com.kilivana.users.domain;
 
 import com.kilivana.common.domain.BaseEntity;
-import com.kilivana.users.service.AccountIdentity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -70,16 +69,31 @@ public class User extends BaseEntity {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<RefreshToken> refreshTokens = new HashSet<>();
 
+    /**
+     * What {@link #username} holds until a caller assigns the account's real handle.
+     *
+     * <p>Not a generated name. It is a fixed, regex-valid constant, and the difference is the whole
+     * point: a random generator produced a plausible handle that {@code AuthService} then
+     * overwrote, which meant a bug in that overwrite left an account with a name that looked
+     * chosen and satisfied every assertion on the column's shape. A constant that is visibly a
+     * placeholder fails an equality assertion immediately and cannot be mistaken for a real handle.
+     *
+     * <p>It exists at all because V11 makes the column NOT NULL, and a null reaches the INSERT as a
+     * bare constraint name with no indication of which caller was at fault.
+     */
+    private static final String PLACEHOLDER_USERNAME = "u_placeholder";
+
     protected User() {
     }
 
     /**
-     * Every constructor leaves {@code username} populated with a generated, regex-valid value,
-     * because V11 makes the column NOT NULL and a signup that sets a chosen username must
-     * therefore *overwrite* this one before persisting rather than rely on the field starting
-     * empty. Generating rather than leaving null means a constructor caller that forgets cannot
-     * reach the database with a null username and fail at the INSERT with a bare constraint
-     * name.
+     * Leaves {@code username} holding {@link #PLACEHOLDER_USERNAME}, because V11 makes the column
+     * NOT NULL and a caller that forgets to assign a handle cannot then fail at the INSERT with a
+     * bare constraint name.
+     *
+     * <p>A caller that <em>does</em> assign one must do so before {@code save}, not on the instance
+     * {@code save} returns — the INSERT has already been issued by then. {@code AuthService} does
+     * this in one place; see {@code registerUser}.
      */
     public User(
             String email,
@@ -89,7 +103,7 @@ public class User extends BaseEntity {
             UserRole role,
             UserStatus status) {
         this.email = email;
-        this.username = AccountIdentity.generatedUsername();
+        this.username = PLACEHOLDER_USERNAME;
         this.passwordHash = passwordHash;
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;

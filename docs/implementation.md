@@ -150,7 +150,7 @@ Seeded badges:
 - `V8__communications_disputes_and_audit.sql` — `notifications`, `disputes`, `audit_logs` tables + supporting columns/indexes.
 - `V9__delivery_fees_and_pickup_ready.sql` — adds `subtotal`/`delivery_fee`/`total_amount` per sub-order and `READY_FOR_PICKUP` order-status support.
 - `V10__refresh_token_family_id.sql` — adds `refresh_tokens.family_id` (backfilled, indexed) for refresh-token family tracking.
-- `V11__one_live_payment_per_order.sql` — partial unique index on `payments(order_id) where status = 'PENDING'`; at most one live payment per order. Enforced in the database because the service check is a read followed by a write, so two concurrent requests can both observe "none pending".
+- `V17__one_live_payment_per_order.sql` — partial unique index on `payments(order_id) where status = 'PENDING'`; at most one live payment per order. (Versioned 17, not 11: the fork this repository was taken from used `V11` for this same index, and two different migrations sharing a version number is what `FlywayMigrationLineageGuard` refuses to start on.) Enforced in the database because the service check is a read followed by a write, so two concurrent requests can both observe "none pending".
 - `V12__payment_verification_attribution.sql` — adds `payments.verified_by_user_id` (FK `users.id`) and `payments.verified_at`; records who made a manual settlement and when. Nullable, never back-filled: pre-existing verified payments predate attribution.
 
 Every entity extends `BaseEntity` (`id` UUID, optimistic-lock `version`, `createdAt`/`updatedAt`).

@@ -237,6 +237,7 @@ public class GoogleAuthService {
 
         User user = authService.registerFromVerifiedEmail(
                 ticket.email(),
+                request.username(),
                 request.fullName(),
                 request.phoneNumber(),
                 request.region(),

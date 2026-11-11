@@ -32,6 +32,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Locale;
 import com.kilivana.users.service.AccountIdentity;
+import com.kilivana.users.service.AccountLoginThrottleKeyNormalizer;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -50,11 +51,12 @@ public class AuthService {
     /** Namespaced so this key can never collide with the filter's {@code <rule>:<address>} keys. */
     private static final String ACCOUNT_LOGIN_KEY_PREFIX = "login-account:";
 
-    /** One owner for this text, because {@link #registerFromVerifiedEmail} matches on it. */
+    /** One owner for this text, because both registration paths raise it for the same condition. */
     private static final String USERNAME_TAKEN = "Username is already registered";
 
-    /** Three, because a collision at 2^-128 is not an event and a loop that cannot end is worse. */
-    private static final int GENERATED_USERNAME_ATTEMPTS = 3;
+    /** The bounds V11's check constraint enforces: {@code ^[a-z][a-z0-9_]{2,29}$}. */
+    private static final int MIN_USERNAME_LENGTH = 3;
+    private static final int MAX_USERNAME_LENGTH = 30;
 
     private static final Set<UserRole> PUBLIC_ROLES = Set.of(
             UserRole.BUYER,
@@ -146,13 +148,24 @@ public class AuthService {
      * inside this transaction so the row is never briefly visible in a state where the
      * address is claimed but not proven.
      *
-     * <p>The username is generated rather than collected, so a Google onboarding cannot observe
-     * whether a name is taken and then choose a different one — the same reason the field is
-     * absent from the request at all.
+     * <p>The username is <em>collected</em>, not generated, and is the caller's to choose: it is
+     * validated by the same {@link AccountIdentity#username} as a password signup, so the two
+     * registration paths cannot drift on what a handle may look like.
+     *
+     * <p>What collecting it costs is the enumeration question, and it is answered here rather
+     * than assumed away. A generated name cannot collide, so this method used to retry silently
+     * and the caller never learned whether the name was taken. Collecting inverts that: the caller
+     * can now probe. The two protections are that the answer is a 409 carrying the same
+     * {@link #USERNAME_TAKEN} text a password signup produces for the same condition — one
+     * canonical owner for the string, so the two paths are indistinguishable — and that there is no
+     * re-roll. A re-roll would be the thing that actually leaks: an attacker retrying the same
+     * name until it succeeds converts one 409 into a free oracle, and it would only exist to
+     * protect a collision rate of zero.
      */
     @Transactional
     public User registerFromVerifiedEmail(
             String normalizedEmail,
+            String username,
             String fullName,
             String phoneNumber,
             String region,
@@ -168,52 +181,11 @@ public class AuthService {
         String canonicalRegion = AccountIdentity.region(region);
         validateDeprecatedFarmLocation(role, farmLocation, canonicalRegion);
 
-        // Only a username collision is retried, and only because this path did not choose the name.
-        // The other two conflicts registerUser raises are about the address or the phone, which are
-        // the caller's own inputs and which no retry can fix: re-rolling would answer a duplicate
-        // signup with a second, slower 409 instead of the first one. Matching on the message is
-        // unpleasant, so it is a single constant thrown from one place below rather than a literal
-        // repeated at both ends.
-        BusinessConflictException lastCollision = null;
-        for (int attempt = 1; attempt <= GENERATED_USERNAME_ATTEMPTS; attempt++) {
-            try {
-                return registerVerifiedEmailAccount(
-                        normalizedEmail,
-                        fullName,
-                        phoneNumber,
-                        canonicalRegion,
-                        role,
-                        businessName,
-                        farmName,
-                        employeeCode);
-            } catch (BusinessConflictException exception) {
-                if (!USERNAME_TAKEN.equals(exception.getMessage())) {
-                    throw exception;
-                }
-                lastCollision = exception;
-            }
-        }
-        // Unreachable in practice: the generated space is 36^25 against 2^128 draws, so a
-        // collision is not a thing this loop exists to survive indefinitely. It is here because
-        // "generate a unique name" is only correct while it actually retries, and a loop that
-        // gave up silently would be worse than one that gives up loudly.
-        throw lastCollision;
-    }
-
-    private User registerVerifiedEmailAccount(
-            String normalizedEmail,
-            String fullName,
-            String phoneNumber,
-            String region,
-            UserRole role,
-            String businessName,
-            String farmName,
-            String employeeCode) {
         User user = registerUser(
                 normalizedEmail,
                 null,
-                AccountIdentity.generatedUsername(),
-                region,
+                username,
+                canonicalRegion,
                 fullName,
                 phoneNumber,
                 role);
@@ -239,13 +211,76 @@ public class AuthService {
             throw new BusinessConflictException("Administrator bootstrap has already been completed");
         }
         // V11 makes username NOT NULL for every row, so the bootstrap path needs one too. It is
-        // generated rather than collected: this endpoint exists to create exactly one account,
-        // guarded by a one-time bootstrap key, and asking an operator for a globally unique
-        // handle they have no reason to want only adds a way for the very first account to fail
-        // to be created. Region stays null, which V11 permits — an administrator has no farm and
-        // no county, and the alternative would be inventing one.
-        User user = registerUser(email, rawPassword, AccountIdentity.generatedUsername(), null, fullName, phoneNumber, role);
+        // derived from the address rather than collected or randomly generated: this endpoint
+        // exists to create exactly one account, guarded by a one-time bootstrap key, so an operator
+        // should not have to invent a globally unique handle, and a derived name is one they can
+        // predict from what they already typed — which is what an administrator auditing their own
+        // first account needs. The derivation goes through AccountIdentity.username, so a local part
+        // that is not a legal handle fails the bootstrap loudly rather than being written as
+        // something the column's check constraint would reject anyway. See
+        // {@link #usernameFromEmail(String)} for how an address that is not a legal handle is
+        // sanitised rather than refused. Region stays null, which
+        // V11 permits: an administrator has no farm and no county, and inventing one would be a
+        // value nobody could later correct from the row.
+        User user = registerUser(
+                email,
+                rawPassword,
+                AccountIdentity.username(usernameFromEmail(email)),
+                null,
+                fullName,
+                phoneNumber,
+                role);
         return issueTokens(user);
+    }
+
+    /**
+     * The local part of an address, which is where an account's handle comes from on the admin
+     * bootstrap path.
+     *
+     * <p>Sanitised rather than merely trimmed. The raw local part is not always a legal handle —
+     * {@code admin-cm@…} and {@code ops+oncall@…} are both valid addresses and neither is a legal
+     * {@code [a-z][a-z0-9_]{2,29}}. Rejecting those outright would make the bootstrap fail on a
+     * perfectly reasonable operator address, and this endpoint creates exactly one account in the
+     * lifetime of a deployment: a rejection here is an outage with no second attempt. So every
+     * character outside {@code [a-z0-9_]} becomes {@code _}, and only then is the value handed to
+     * {@link AccountIdentity#username} for canonicalisation and validation.
+     *
+     * <p>A local part that is still not a legal handle after that — empty, or all characters
+     * stripped — produces a value the validation rejects with a message naming the constraint,
+     * which is the right outcome for a bootstrap that has genuinely been misconfigured.
+     */
+    private static String usernameFromEmail(String email) {
+        String trimmed = email == null ? "" : email.trim();
+        int at = trimmed.indexOf('@');
+        String localPart = (at < 0 ? trimmed : trimmed.substring(0, at)).toLowerCase(Locale.ROOT);
+        StringBuilder sanitised = new StringBuilder(localPart.length());
+        for (int index = 0; index < localPart.length(); index++) {
+            char character = localPart.charAt(index);
+            boolean legal = (character >= 'a' && character <= 'z')
+                    || (character >= '0' && character <= '9')
+                    || character == '_';
+            sanitised.append(legal ? character : '_');
+        }
+        // Three shapes survive the substitution but are still not legal handles: too short
+        // (ab@, a@), a leading underscore (_x@), and one longer than the column (30 chars).
+        // A leading {@code u} fixes the first two at once and costs nothing in the third, and the
+        // truncation is on a string no operator can predict or depend on. Refusing instead would
+        // fail the one bootstrap a deployment ever gets.
+        String handle = sanitised.length() > MAX_USERNAME_LENGTH
+                ? sanitised.substring(0, MAX_USERNAME_LENGTH)
+                : sanitised.toString();
+        if (!handle.isEmpty() && handle.charAt(0) == '_') {
+            handle = "u" + handle;
+        }
+        if (handle.length() < MIN_USERNAME_LENGTH) {
+            handle = "u" + handle;
+        }
+        // The leading 'u' above can push a full-length handle past the column bound. A 'u' is
+        // cheaper to lose than the last character, so clamp after prefixing rather than before.
+        if (handle.length() > MAX_USERNAME_LENGTH) {
+            handle = handle.substring(0, MAX_USERNAME_LENGTH);
+        }
+        return handle;
     }
 
     /**
@@ -254,12 +289,19 @@ public class AuthService {
      * rather than one constructor being handed a null it cannot distinguish from a
      * misconfigured encoder.
      *
-     * <p>{@code username} and {@code region} are arguments rather than post-save assignments
-     * because {@link UserRepository#save} on a new entity with an assigned UUID issues the INSERT
-     * immediately. Setting them on the returned instance wrote a row with a null username, which
-     * V11 rejects with a bare constraint name and a second UPDATE to repair — and the generated
-     * username the constructor had put there was overwritten in between, so the fix was "throw
-     * away the row". Everything the INSERT names is set on the entity before it is persisted.
+     * <p>{@code username} and {@code region} are set on the entity <em>before</em> the save rather
+     * than on the instance it returns, because {@link UserRepository#save} on a new entity with an
+     * assigned UUID issues the INSERT immediately. Assigning afterwards cost a second UPDATE and,
+     * more importantly, deferred {@code uq_users_username} and {@code chk_users_username} to that
+     * UPDATE — so a collision surfaced at commit as a raw {@code DataIntegrityViolationException}
+     * and a 409 DATA_CONFLICT, instead of the {@code BusinessConflictException} the pre-check
+     * promises and the rest of this class throws for every other uniqueness conflict.
+     *
+     * <p>That history is why {@link User}'s constructor still generates a placeholder username even
+     * though every caller overwrites it here: an INSERT can never be issued with the column null,
+     * so a future constructor caller fails fast and locally rather than at the database. It is not
+     * an expression of intent, and nothing should read it back expecting it to be the account's
+     * name.
      */
     private User registerUser(
             String email,
@@ -361,15 +403,28 @@ public class AuthService {
         // This is also why a phone login keys on the account's email rather than on the number
         // it was found by: the budget belongs to the account, and one account means one bucket.
         consumeAccountLoginAttempt(user.getEmail());
+        // Both refusals below spend a real bcrypt comparison before throwing, and the status check
+        // runs BEFORE authenticate for the same reason the check is not where it used to be.
+        //
+        // Authenticating first and then checking the status looked equivalent — same 401, same
+        // message, budget already spent — but it is two orderings' difference in cost. authenticate
+        // throws for a suspended account exactly as it does for a wrong password, so the bcrypt it
+        // runs is spent on an attempt that was already decided; and a status check placed after it
+        // is one refactor away from sitting after an early return, at which point a suspended
+        // account costs a cheap indexed read where a wrong password costs ~300ms of bcrypt. Status
+        // is not a secret — it is visible on a user record to anyone with staff access — but
+        // "this account exists and is suspended" is a credential oracle, and an oracle that costs
+        // milliseconds to answer is an oracle worth automating.
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            spendDummyPasswordComparison();
+            throw new AuthenticationFailedException("Invalid credentials");
+        }
         if (user.getPasswordHash() == null) {
             spendDummyPasswordComparison();
             throw new AuthenticationFailedException("Invalid credentials");
         }
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(user.getEmail(), request.password()));
-        if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new AuthenticationFailedException("Invalid credentials");
-        }
         return issueTokens(user);
     }
 
@@ -381,6 +436,11 @@ public class AuthService {
      * strength 12 — so a Google-only account was distinguishable from a password account by
      * response time alone, on an unauthenticated endpoint. Spending a real comparison against
      * a dummy hash before refusing closes it.
+     *
+     * <p>Three other refusal paths spend one too, and the reason is the same: a path that decides
+     * before {@link AuthenticationManager#authenticate} runs no bcrypt at all, which would make it
+     * measurably faster than a wrong password on the same endpoint. The suspended-account check and
+     * the no-password check both sit ahead of the call, so both pay. See {@link #login}.
      *
      * <p>The dummy is encoded with the configured encoder rather than pasted in as a literal,
      * so it cannot drift to a cheaper strength than the real hashes and quietly reopen the gap
@@ -416,6 +476,17 @@ public class AuthService {
      * <p>The key is the hash of the <em>stored</em> address whenever an account row was found, and
      * of the normalised typed address only when it was not. See {@link #login} for why that
      * asymmetry is required and why the stored form is the one that has to be canonical.
+     *
+     * <p>The value is put through {@link AccountLoginThrottleKeyNormalizer} before hashing, at
+     * this single choke point rather than at the three call sites, because the call sites are not
+     * the risk — they pass a stored address and a typed address already, and the two disagree
+     * only under the spellings the collation folds together. One place means a future caller
+     * cannot forget.
+     *
+     * <p>Changing this derivation changes every key, so an already-running deployment's in-flight
+     * per-account budgets reset on deploy: an attacker holding a partly-spent budget keeps a
+     * partly-spent budget, it is not topped up. Deploying this does not require flushing Redis;
+     * the old keys age out on their own window and are unreachable.
      */
     private void consumeAccountLoginAttempt(String normalizedEmail) {
         consumeLoginBudgetFor(normalizedEmail);
@@ -437,7 +508,8 @@ public class AuthService {
             // which is the more surprising of the two failures in either direction.
             return;
         }
-        String key = ACCOUNT_LOGIN_KEY_PREFIX + tokenService.hash(normalizedEmail);
+        String key = ACCOUNT_LOGIN_KEY_PREFIX
+                + tokenService.hash(AccountLoginThrottleKeyNormalizer.normalize(normalizedEmail));
         RateLimitResult result = rateLimiter.tryConsume(
                 key,
                 rateLimitProperties.loginAttemptsPerAccountPerWindow(),

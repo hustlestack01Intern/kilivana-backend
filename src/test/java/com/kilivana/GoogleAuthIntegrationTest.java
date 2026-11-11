@@ -172,7 +172,7 @@ class GoogleAuthIntegrationTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/v1/auth/google/onboard")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(
-                                new GoogleOnboardingRequest(handshake.onboardingTicket(), UserRole.SUPPLIER, "Name", "+254700000001", "Nairobi", "Biz", null, null, null))))
+                                new GoogleOnboardingRequest(handshake.onboardingTicket(), "unproven_user", UserRole.SUPPLIER, "Name", "+254700000001", "Nairobi", "Biz", null, null, null))))
                 .andExpect(status().isBadRequest());
 
         assertThat(userRepository.findAll()).isEmpty();
@@ -195,7 +195,7 @@ class GoogleAuthIntegrationTest extends IntegrationTestSupport {
         MvcResult onboardResult = mockMvc.perform(post("/api/v1/auth/google/onboard")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(
-                                new GoogleOnboardingRequest(provenTicket, UserRole.SUPPLIER, "Proven User", "+254700000002", "Nairobi", "Sup", null, null, null))))
+                                new GoogleOnboardingRequest(provenTicket, "proven_user", UserRole.SUPPLIER, "Proven User", "+254700000002", "Nairobi", "Sup", null, null, null))))
                 .andExpect(status().isCreated())
                 .andReturn();
 
@@ -204,6 +204,70 @@ class GoogleAuthIntegrationTest extends IntegrationTestSupport {
         assertThat(auth.refreshToken()).isNotBlank();
         assertThat(userRepository.findAll()).hasSize(1);
         assertThat(userIdentityRepository.findAll()).hasSize(1);
+        // The handle the client chose is the handle stored. It used to be absent from the request
+        // and generated here instead, so this is the assertion that makes the field load-bearing:
+        // a response echoing a generated u_<base36> name would not match, and neither would an
+        // account that canonicalised it differently.
+        assertThat(auth.username()).isEqualTo("proven_user");
+    }
+
+    @Test
+    void onboard_withATakenUsername_isRefusedTheSameWaySignupRefusesIt() throws Exception {
+        String takenTicket = handshakeAndProve("sub-taken", "taken@example.com");
+
+        // An account already holding this handle, created the ordinary way.
+        mockMvc.perform(post("/api/v1/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(new SignupRequest(
+                                "taken@example.com", "secretPass1", "Existing", "+254700000009",
+                                "taken_user", "Nairobi", UserRole.BUYER,
+                                null, null, null, null, null, null, null, null))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/auth/google/onboard")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(new GoogleOnboardingRequest(
+                                takenTicket, "taken_user", UserRole.BUYER, "Taken", "+254700000010",
+                                "Nairobi", null, null, null, null))))
+                .andExpect(status().isConflict());
+
+        // And the message is the one signup uses for the same condition — a second, Google-flavoured
+        // wording here would be what turns this into a username oracle, since a caller could tell
+        // "this name is taken on Google onboarding" from "this name is taken generally".
+        assertThat(userRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void onboard_withoutAUsername_isRejectedBeforeAnythingIsWritten() throws Exception {
+        String ticket = handshakeAndProve("sub-nouser", "nouser@example.com");
+
+        mockMvc.perform(post("/api/v1/auth/google/onboard")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(new GoogleOnboardingRequest(
+                                ticket, null, UserRole.BUYER, "No Username", "+254700000011",
+                                "Nairobi", null, null, null, null))))
+                .andExpect(status().isBadRequest());
+
+        // The ticket is single-use and is consumed before the body is validated, so this also pins
+        // that nothing was written and the address is still free.
+        assertThat(userRepository.findAll()).isEmpty();
+    }
+
+    /**
+     * A handshake followed by the mailbox check, so the ticket really is one this lineage issued.
+     * Minting one directly would test onboarding against a ticket the endpoint never produces.
+     */
+    private String handshakeAndProve(String subject, String email) throws Exception {
+        when(googleTokenVerifier.verify(anyString()))
+                .thenReturn(claims(subject, email, false, "example.com", "Tester"));
+        GoogleHandshakeResponse handshake = readBody(
+                mockMvc.perform(post("/api/v1/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsBytes(new GoogleAuthRequest("fake"))))
+                        .andExpect(status().isOk())
+                        .andReturn(),
+                GoogleHandshakeResponse.class);
+        return getProvenTicket(handshake.onboardingTicket(), handshake.verificationToken());
     }
 
     private String getProvenTicket(String ticket, String token) throws Exception {
@@ -233,13 +297,13 @@ class GoogleAuthIntegrationTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/v1/auth/google/onboard")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(
-                                new GoogleOnboardingRequest(proven, UserRole.SUPPLIER, "Replay User", "+254700000003", "Nairobi", "Biz", null, null, null))))
+                                new GoogleOnboardingRequest(proven, "replay_user", UserRole.SUPPLIER, "Replay User", "+254700000003", "Nairobi", "Biz", null, null, null))))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/auth/google/onboard")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(
-                                new GoogleOnboardingRequest(proven, UserRole.SUPPLIER, "Replay User", "+254700000003", "Nairobi", "Biz", null, null, null))))
+                                new GoogleOnboardingRequest(proven, "replay_user", UserRole.SUPPLIER, "Replay User", "+254700000003", "Nairobi", "Biz", null, null, null))))
                 .andExpect(status().isBadRequest());
     }
 
@@ -259,7 +323,7 @@ class GoogleAuthIntegrationTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/v1/auth/google/onboard")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(
-                                new GoogleOnboardingRequest(proven, UserRole.SUPPLIER, "Return User", "+254700000004", "Nairobi", "Biz", null, null, null))))
+                                new GoogleOnboardingRequest(proven, "return_user", UserRole.SUPPLIER, "Return User", "+254700000004", "Nairobi", "Biz", null, null, null))))
                 .andExpect(status().isCreated());
 
         // Second handshake with same sub

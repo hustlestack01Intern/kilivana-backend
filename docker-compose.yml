@@ -5,6 +5,16 @@ services:
       POSTGRES_DB: kilivana
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      # The account login throttle keys on a normalised email, and that key must agree with
+      # how Postgres resolves `email = :typed` (see AccountLoginThrottleKeyNormalizer). A
+      # database initialised with a C collation does not fold U+0131 DOTLESS I to ASCII I, so
+      # every other spelling of one address gets its own throttle budget and the limit is
+      # defeated. The provider is pinned to libc rather than left to the image default:
+      # postgres:16-alpine is musl, and musl has no ICU, so `--locale-provider=icu` cannot be
+      # asked for here. These arguments only apply when initdb runs — they are ignored for an
+      # existing `postgres_data` volume, which keeps whatever collation it was created with.
+      # Recreate the volume (`docker compose down -v`) to change an existing database.
+      POSTGRES_INITDB_ARGS: "--locale-provider=libc --lc-collate=en_US.utf8 --lc-ctype=en_US.utf8 --encoding=UTF8"
     ports:
       - "5432:5432"
     volumes:

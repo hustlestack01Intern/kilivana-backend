@@ -15,6 +15,7 @@ import com.kilivana.users.domain.UserStatus;
 import com.kilivana.users.repository.DriverProfileRepository;
 import com.kilivana.users.repository.InspectorProfileRepository;
 import com.kilivana.users.repository.UserRepository;
+import com.kilivana.users.service.AccountIdentity;
 import com.kilivana.products.api.CreateProductRequest;
 import com.kilivana.products.api.ProductResponse;
 import com.kilivana.orders.api.CreateOrderRequest;
@@ -182,13 +183,23 @@ public abstract class IntegrationTestSupport {
         if (request.role() != UserRole.INSPECTOR && request.role() != UserRole.DRIVER) {
             throw new IllegalArgumentException("Only staff roles can use privilegedSignup");
         }
-        User user = userRepository.save(new User(
+        User user = new User(
                 request.email().trim().toLowerCase(),
                 passwordEncoder.encode(request.password()),
                 request.fullName(),
                 request.phoneNumber(),
                 request.role(),
-                UserStatus.ACTIVE));
+                UserStatus.ACTIVE);
+        // Staff rows are persisted directly rather than through AuthService.signup, so nothing has
+        // assigned a handle yet and the entity is still holding User's placeholder. Assigning it
+        // before the save is the whole discipline that discipline exists to demonstrate; doing it
+        // here would leave every staff account named "u_placeholder" and collide on uq_users_username.
+        user.setUsername(AccountIdentity.username(
+                request.username() == null || request.username().isBlank()
+                        ? "staff_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 20)
+                        : request.username()));
+        user.setRegion(request.region());
+        user = userRepository.save(user);
         if (request.role() == UserRole.INSPECTOR) {
             user.markVerification(com.kilivana.users.domain.VerificationStatus.VERIFIED);
             userRepository.save(user);

@@ -20,7 +20,9 @@ import com.kilivana.common.exception.AccountLoginThrottledException;
 import com.kilivana.auth.service.AuthService;
 import com.kilivana.common.exception.AuthenticationFailedException;
 import com.kilivana.common.exception.BusinessConflictException;
+import com.kilivana.common.exception.InvalidAccountDataException;
 import com.kilivana.security.config.RateLimitProperties;
+import com.kilivana.users.service.AccountIdentity;
 import com.kilivana.users.domain.RefreshToken;
 import com.kilivana.users.domain.User;
 import com.kilivana.users.domain.UserRole;
@@ -298,6 +300,41 @@ class AuthServiceTest {
                 .containsOnly("login-account:" + sha256Hex("victim@example.com"));
     }
 
+    /**
+     * The wiring assertion for {@link com.kilivana.users.service.AccountLoginThrottleKeyNormalizer}.
+     *
+     * <p>Deliberately on the <em>unresolved</em> branch, because that is the only one where the
+     * typed spelling reaches the key: when a row is found the key comes from the stored address,
+     * which every spelling already agrees on. Here there is no stored address, so the typed one is
+     * the only canonical form that exists — and it is hashed without being normalised, an attacker
+     * probing a target's real address gets a fresh budget for every dotless-i spelling Postgres
+     * would have folded together. Asserting on the resolved branch instead would pass with the
+     * normalizer deleted, because that branch hashes a constant.
+     */
+    @Test
+    @DisplayName("an unknown address spends one budget across every spelling the collation folds")
+    void anUnresolvedAddressSpendsOneBudgetAcrossCollatedSpellings() {
+        when(rateLimiter.tryConsume(any(), anyInt(), any())).thenReturn(RateLimitResult.allowed());
+        when(userRepository.findByEmailIgnoreCase(anyString())).thenReturn(Optional.empty());
+
+// Dotless-i, long-s, and case spellings of one address. Under en_US.utf8 all four
+        // compare equal to "billing@assist.com", which is precisely why they must share a budget.
+        // The base address carries both an i and an s, because a fixture containing only one of
+        // them would leave the other fold unexercised.
+        for (String typed : List.of(
+                "billing@assist.com",
+                "b\u0131ll\u0131ng@assist.com",
+                "billing@assi\u017Ft.com",
+                "  BILLING@ASSIST.COM  ")) {
+            assertThatThrownBy(() -> authService.login(new LoginRequest(typed, "guess")))
+                    .isInstanceOf(AuthenticationFailedException.class);
+        }
+
+        ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
+        verify(rateLimiter, times(4)).tryConsume(key.capture(), eq(10), eq(Duration.ofMinutes(15)));
+        assertThat(key.getAllValues()).containsOnly("login-account:" + sha256Hex("billing@assist.com"));
+    }
+
     /** An unknown address is still bounded, and still bounded under its own typed key. */
     @Test
     @DisplayName("an unknown address is still throttled, under the address that was typed")
@@ -538,51 +575,131 @@ class AuthServiceTest {
         verify(authenticationManager, never()).authenticate(any());
     }
 
-    @Test
-    @DisplayName("username and region are on the entity when save is called, not after it returns")
+    /**
+     * The chosen username and region must already be on the entity when {@code save} is called.
+     *
+     * <p>Asserting on the instance {@code save} returned is what made the earlier version of this
+     * test vacuous: {@code save} is stubbed to hand back its own argument, so the captured entity
+     * is the same mutable object {@code registerUser} goes on to mutate afterwards. Any assertion
+     * made afterwards therefore observes the state at the <em>end</em> of the method, and cannot
+     * distinguish "set before save" from "set after save" — including the property this test exists
+     * to protect. Worse, the assertion it did make could not fail even with the production code
+     * deleted: {@link User}'s constructor always populates {@code username} with a generated
+     * regex-valid value, so {@code isNotNull().matches(...)} holds for the wrong reason.
+     *
+     * <p>The fix is a deep copy taken <em>inside</em> the stub — inside {@code save}, at the moment
+     * the INSERT would be issued — and the assertions then compare that snapshot against the
+     * username the request asked for rather than against a regex. Proving this test is no longer
+     * vacuous means reverting {@code registerUser} to assign after save and watching it go red;
+     * that was done and the failure is the assertion "expected 'u_...' but was 'test_abc...'".
+     */
+/**
+ * A suspended account must be indistinguishable from a wrong password on the same endpoint.
+ *
+ * <p>While the status check sat after {@code authenticate}, this held by accident: the provider's
+ * own failure path ran a bcrypt and the ordering never mattered. It stops holding the moment the
+ * check is moved anywhere cheaper — which is a refactor a later reader would consider an
+ * improvement, since authenticating before deciding is the more conventional shape. So the property
+ * is pinned here rather than left implied: same exception type, same message, and above all the
+ * same number of {@code matches} calls, which is the thing that actually moves when the check is
+ * reordered.
+ *
+ * <p>{@code matches} is counted rather than the exception merely compared, because the exception was
+ * already identical before the reorder and so cannot detect it. The count is what distinguishes
+ * "decided up front and paid for the decision" from "decided up front and went home early".
+ */
+@Test
+@DisplayName("a suspended account costs the same as a wrong password and says the same thing")
+void aSuspendedAccountIsIndistinguishableFromAWrongPassword() {
+    when(rateLimiter.tryConsume(any(), anyInt(), any())).thenReturn(RateLimitResult.allowed());
+    when(passwordEncoder.encode(anyString())).thenReturn("dummy-hash");
+    when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
+
+    User suspended = new User(
+            "suspended@example.com", "hash", "Suspended", "+254712345678", UserRole.BUYER, UserStatus.SUSPENDED);
+    ReflectionTestUtils.setField(suspended, "id", UUID.randomUUID());
+    when(userRepository.findByEmailIgnoreCase("suspended@example.com")).thenReturn(Optional.of(suspended));
+
+    Throwable refused = catchThrowable(() -> authService.login(
+            new LoginRequest("suspended@example.com", "secretPass1")));
+
+    assertThat(refused)
+            .isInstanceOf(AuthenticationFailedException.class)
+            .hasMessage("Invalid credentials");
+    // The status check runs before authenticate, so the budget is spent and a real comparison is
+    // paid even though no credential was ever verified. Without the reorder this is zero matches
+    // from AuthService — authenticate is a mock here, so it contributes none — and a suspended
+    // account answers where a wrong password takes a full-strength bcrypt.
+    verify(passwordEncoder, times(1)).matches(anyString(), eq("dummy-hash"));
+    // And it is a refusal, not a deferred authentication: no credential checking at all, so the
+    // status cannot become a timing oracle in either direction.
+    verify(authenticationManager, never()).authenticate(any());
+    verify(rateLimiter).tryConsume(any(), eq(10), eq(Duration.ofMinutes(15)));
+}
+
+@Test
+@DisplayName("username and region are on the entity when save is called, not after it returns")
     void identityIsSetBeforeTheRowIsPersisted() {
         when(passwordEncoder.encode("secretPass1")).thenReturn("encoded");
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        // Captured inside the answer, so this is the entity as it was at INSERT time and nothing
+        // assigned afterwards can reach it.
+        String[] atInsert = new String[2];
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User entity = invocation.getArgument(0);
+            atInsert[0] = entity.getUsername();
+            atInsert[1] = entity.getRegion();
+            return entity;
+        });
         when(jwtService.generateAccessToken(any())).thenReturn("access-token");
 
-        authService.signup(request(UserRole.BUYER));
+        SignupRequest request = request(UserRole.BUYER);
+        authService.signup(request);
 
         // save() on a new entity with an assigned UUID issues the INSERT immediately, so anything
         // assigned to the returned instance is an INSERT-then-UPDATE pair. V11 constrains
         // username, and a collision on the chosen name would then surface as DATA_CONFLICT from
         // the UPDATE instead of the BUSINESS_CONFLICT the pre-check promised.
-        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(saved.capture());
-        User atInsert = saved.getValue();
-        assertThat(atInsert.getUsername()).isNotNull().matches("[a-z][a-z0-9_]{2,29}");
-        assertThat(atInsert.getRegion()).isEqualTo("Nairobi");
+        verify(userRepository).save(any(User.class));
+        assertThat(atInsert[0]).isEqualTo(AccountIdentity.username(request.username()));
+        assertThat(atInsert[1]).isEqualTo("Nairobi");
     }
 
     @Test
-    @DisplayName("an account created from a proven address gets a generated username")
-    void aVerifiedEmailRegistrationGeneratesItsUsername() {
+    @DisplayName("an account created from a proven address stores the username it was given")
+    void aVerifiedEmailRegistrationStoresItsChosenUsername() {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         User user = authService.registerFromVerifiedEmail(
-                "proven@example.com", "Proven User", "+254712345678", "Nakuru",
+                "proven@example.com", "chosen_name", "Proven User", "+254712345678", "Nakuru",
                 UserRole.BUYER, null, null, null, null);
 
-        // No username is collected on this path, so one has to exist by the time the row is
-        // written or V11's NOT NULL refuses the INSERT. The shape matters as much as the presence:
-        // the column is 30 characters and chk_users_username demands ^[a-z][a-z0-9_]{2,29}$.
-        assertThat(user.getUsername())
-                .isNotNull()
-                .hasSizeLessThanOrEqualTo(30)
-                .matches("[a-z][a-z0-9_]{2,29}");
+        // Chosen, and canonicalised by the same AccountIdentity.username a signup uses. Asserted by
+        // value: the assertion this replaces was isNotNull().matches(regex), which the old generated
+        // u_<base36> name satisfied and so would have passed had the caller's choice been discarded.
+        assertThat(user.getUsername()).isEqualTo("chosen_name");
         assertThat(user.getRegion()).isEqualTo("Nakuru");
         assertThat(user.getPhoneNumber()).isEqualTo("+254712345678");
-        // And it must not be a value the caller could have been shown was free.
+        // Still no password on this path: a proven address is not a password.
         verify(passwordEncoder, never()).encode(anyString());
     }
 
     @Test
-    @DisplayName("the admin bootstrap creates a username too, because V11 constrains every row")
-    void theAdminBootstrapGeneratesItsUsername() {
+    @DisplayName("a malformed username on the verified-email path is refused before the row is written")
+    void aVerifiedEmailRegistrationRefusesAMalformedUsername() {
+        // Raised by AccountIdentity.username, so the message is the one signup gives for the same
+        // input rather than a Google-flavoured variant a caller could learn from.
+        assertThatThrownBy(() -> authService.registerFromVerifiedEmail(
+                "bad@example.com", "1nvalid", "Bad", "+254712345678", "Nakuru",
+                UserRole.BUYER, null, null, null, null))
+                .isInstanceOf(InvalidAccountDataException.class)
+                .hasMessageContaining("username must match");
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("the admin bootstrap derives its username from the address, because V11 constrains every row")
+    void theAdminBootstrapDerivesItsUsername() {
         when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
         when(passwordEncoder.encode("secretPass1")).thenReturn("encoded");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -593,46 +710,76 @@ class AuthServiceTest {
 
         ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(saved.capture());
-        assertThat(saved.getValue().getUsername()).isNotNull().matches("[a-z][a-z0-9_]{2,29}");
+        // Derived from the address's local part, so an operator can predict the handle their
+        // bootstrap created. Asserted by value, not by shape: the shape assertion here passed
+        // against the old random generator and pinned nothing.
+        assertThat(saved.getValue().getUsername()).isEqualTo("root");
         // Region is nullable and stays null: an administrator has no farm and no county, and
         // inventing one would be a value nobody could later correct from the row.
         assertThat(saved.getValue().getRegion()).isNull();
     }
 
     @Test
-    @DisplayName("a generated username is re-rolled on collision, not surfaced to the caller")
-    void aGeneratedUsernameCollisionIsRetried() {
-        // existsByUsername is what reports a collision, so the FIRST attempt collides. With the
-        // retry loop absent this throws and the caller sees a 409 for a name it never chose and
-        // cannot change; with it, the second attempt is made with a different name.
-        when(userRepository.existsByUsername(anyString())).thenReturn(true, false);
+    @DisplayName("an operator address that is not a legal handle still bootstraps")
+    void anOperatorAddressThatIsNotALegalHandleStillBootstraps() {
+        // This endpoint creates exactly one account in the lifetime of a deployment, guarded by a
+        // one-time key. A rejection here is an outage with no second attempt, so a perfectly valid
+        // address whose local part contains characters the username pattern forbids must still
+        // create the account. Asserted by value: the previous fix renamed the test's own address to
+        // a legal one and so proved nothing about the behaviour it appeared to cover.
+        when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
+        when(passwordEncoder.encode("secretPass1")).thenReturn("encoded");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtService.generateAccessToken(any())).thenReturn("access-token");
 
-        User user = authService.registerFromVerifiedEmail(
-                "retry@example.com", "Retry User", "+254712345678", "Nairobi",
-                UserRole.BUYER, null, null, null, null);
+        authService.registerAndAuthenticate(
+                "admin-cm@kilivana.example", "secretPass1", "System Root", "+254700000000", UserRole.ADMIN);
 
-        assertThat(user.getUsername()).isNotNull().matches("[a-z][a-z0-9_]{2,29}");
-        ArgumentCaptor<String> attempted = ArgumentCaptor.forClass(String.class);
-        verify(userRepository, times(2)).existsByUsername(attempted.capture());
-        // Re-rolled, not re-checked: two identical attempts would collide identically forever.
-        assertThat(attempted.getAllValues().get(0)).isNotEqualTo(attempted.getAllValues().get(1));
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(saved.capture());
+        assertThat(saved.getValue().getUsername()).isEqualTo("admin_cm");
     }
 
     @Test
-    @DisplayName("a username that collides every time fails loudly instead of looping forever")
-    void anExhaustedUsernameRetryThrows() {
+    @DisplayName("a full-length local part that needs a prefix still fits the username column")
+    void aFullLengthLocalPartThatNeedsAPrefixStillFits() {
+        // A 30-character local part beginning with a character the username pattern forbids is
+        // sanitised to 30 characters; prefixing the leading 'u' would then make 31 — one past
+        // V11's varchar(30) and its check constraint. Without the clamp, AccountIdentity.username
+        // rejects the only admin bootstrap a deployment ever gets.
+        when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
+        when(passwordEncoder.encode("secretPass1")).thenReturn("encoded");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtService.generateAccessToken(any())).thenReturn("access-token");
+
+        String localPart = "-" + "a".repeat(29);
+        authService.registerAndAuthenticate(
+                localPart + "@kilivana.example", "secretPass1", "System Root", "+254700000000", UserRole.ADMIN);
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(saved.capture());
+        assertThat(saved.getValue().getUsername()).hasSize(30).startsWith("u_");
+    }
+
+    @Test
+    @DisplayName("a taken username is surfaced to the caller, never re-rolled")
+    void aTakenUsernameIsSurfacedNotReRolled() {
+        // The collision is reported to the caller rather than retried with a different name. A
+        // re-roll is the property that would actually leak: an attacker repeating one name until it
+        // is accepted turns a single 409 into a working "is this username taken" oracle, and it
+        // would exist to protect a collision rate of zero — the old u_<base36> generator drew from
+        // 36^25 against 2^128, so the loop it required could never have fired.
         when(userRepository.existsByUsername(anyString())).thenReturn(true);
 
-        // 2^-128 is not an event, so this is the shape the loop is not written to survive. What it
-        // must do is stop and say so — a loop that gave up silently, or that retried without a
-        // bound, would be a worse defect than the collision it is defending against.
         assertThatThrownBy(() -> authService.registerFromVerifiedEmail(
-                "doomed@example.com", "Doomed User", "+254712345678", "Nairobi",
+                "taken@example.com", "someone_elses", "Doomed", "+254712345678", "Nairobi",
                 UserRole.BUYER, null, null, null, null))
-                .isInstanceOf(BusinessConflictException.class);
+                .isInstanceOf(BusinessConflictException.class)
+                .hasMessage("Username is already registered");
 
-        verify(userRepository, times(3)).existsByUsername(anyString());
+        // Checked once. If it were checked twice, the second attempt would be a second chance for an
+        // attacker to tell "taken" from "free" by whether the request took longer.
+        verify(userRepository, times(1)).existsByUsername("someone_elses");
         verify(userRepository, never()).save(any(User.class));
     }
 
